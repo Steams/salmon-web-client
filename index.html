@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Title</title>
+
+    <!-- <link rel="manifest" href="/assets/site.webmanifest"> -->
+    <!-- <meta name="msapplication-TileColor" content="#da532c"> -->
+
+    <base href = "http://localhost:8080/" />
+
+    <meta name="theme-color" content="#ffffff">
+
+    <!-- Import Ionicon icons & Google Fonts our Bootstrap theme relies on -->
+    <link href="//fonts.googleapis.com/css?family=Titillium+Web:700|Source+Serif+Pro:400,700|Merriweather+Sans:400,700|Source+Sans+Pro:400,300,600,700,300italic,400italic,600italic,700italic" rel="stylesheet" type="text/css">
+    <!-- Import the custom Bootstrap 4 theme from our hosted CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="elm.js"></script>
+  </head>
+  <body>
+    <script>
+     /* var flags = localStorage.getItem(storageKey); */
+
+    var storageKey = "store";
+    var flags = { csrfToken : "csrfToken", sessionToken : "session" }
+    var app = Elm.Main.init({
+        flags: flags
+    });
+     app.ports.initialize.subscribe(function(url) {
+         console.log(url)
+         let audio = document.getElementById("hls-audio");
+         console.log(audio)
+         let source = url
+
+         if (Hls.isSupported()) {
+             console.log("hello hls.js!");
+
+             let hls = new Hls();
+             hls.loadSource(source);
+             hls.attachMedia(audio);
+
+             hls.on(Hls.Events.MEDIA_ATTACHED,function() {
+                 console.log("video and hls.js are now bound together !");
+                 audio.play();
+             });
+             /* hls.on(Hls.Events.MEDIA_ATTACHED, () => { */
+             /* console.log("video and hls.js are now bound together !"); */
+             /* hls.loadSource(source); */
+             /* }); */
+         }
+         /* audio.onplay = () => { */
+         /* console.log("we can track events the same way with hls.js") */
+         /* }; */
+     });
+    </script>
+  </body>
+</html>
