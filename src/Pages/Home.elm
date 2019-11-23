@@ -1,5 +1,6 @@
 module Pages.Home exposing (Model, Msg, init, update, view)
 
+import App as App
 import Api exposing (Song, get_data)
 import Browser.Navigation exposing (pushUrl)
 import Element exposing (..)
@@ -25,24 +26,24 @@ type alias Model =
 
 
 -- State
-
-
 type Msg
     = NoOp
     | HandleData (WebData (List Song))
     | LoadSong String
 
 
-init : Session -> ( Model, Cmd Msg )
+init : Session -> ( Model, Cmd (App.Msg msg) )
 init session =
     ( { data = Loading }, load_data session )
 
 
+to_app_msg x = x >> App.HomeMsg >> App.LocalMsg
+
 load_data session =
-    get_data HandleData
+    get_data session.sessionToken <| to_app_msg HandleData
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd (App.Msg msg) )
 update msg model =
     case msg of
         HandleData res ->
@@ -64,7 +65,7 @@ update msg model =
 
 
 display_song song =
-    Element.column [ onClick <| LoadSong song.playlist ]
+    Element.column [ onClick <| (to_app_msg LoadSong) song.playlist ]
         [ text <| "Title : " ++ song.title
         , text <| "Duration : " ++ String.fromInt song.duration
         , text <| "URL : " ++ song.playlist
@@ -102,7 +103,7 @@ render model =
             text "Not Asked"
 
 
-view : Model -> TitleAndContent Msg
+view : Model -> TitleAndContent (App.Msg msg)
 view model =
     { title = "Contacts"
     , content = render model

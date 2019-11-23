@@ -1,7 +1,8 @@
-module Api exposing (Song, get_data)
+module Api exposing (Song, get_data,login)
 
 import Http as Http
 import Json.Decode as Decode exposing (Decoder, field, int, string)
+import Json.Encode as Encode
 import RemoteData as RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 
@@ -14,6 +15,10 @@ import Session exposing (Session)
 
 type Endpoint
     = GetData
+
+
+type alias Credentials =
+    String
 
 
 
@@ -47,16 +52,34 @@ song_list_decoder =
     Decode.list song_decoder
 
 
-get_data : (WebData (List Song) -> msg) -> Cmd msg
-get_data handler =
-    get "http://localhost:8080/media" handler song_list_decoder
+login : (WebData String -> msg) -> String -> String -> Cmd msg
+login handler username password =
+    Http.request
+        { method = "POST"
+        , headers = []
+        , url = "http://localhost:8080/login"
+        , body =
+            Http.jsonBody <|
+                Encode.object
+                    [ ( "username", Encode.string username )
+                    , ( "password", Encode.string password )
+                    ]
+        , expect = Http.expectJson (RemoteData.fromResult >> handler) string
+        , timeout = Nothing
+        , tracker = Nothing
+        }
 
 
-get : String -> (WebData a -> msg) -> Decoder a -> Cmd msg
-get endpoint handler decoder =
+get_data : Credentials -> (WebData (List Song) -> msg) -> Cmd msg
+get_data credentials handler =
+    get credentials "http://localhost:8080/media" handler song_list_decoder
+
+
+get : Credentials -> String -> (WebData a -> msg) -> Decoder a -> Cmd msg
+get credentials endpoint handler decoder =
     Http.request
         { method = "GET"
-        , headers = [ Http.header "Authorization" "1" ]
+        , headers = [ Http.header "Authorization" credentials ]
         , url = endpoint
         , body = Http.emptyBody
         , expect = Http.expectJson (RemoteData.fromResult >> handler) decoder

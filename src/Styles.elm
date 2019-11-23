@@ -9,6 +9,8 @@ import Element.Font as Font
 
 -- Colors
 
+blue =
+    rgb255 5 100 245
 
 primary_green =
     rgb255 0 209 178

@@ -1,13 +1,14 @@
 module Pages.Login exposing (Model, Msg, init, update, view)
 
-import Api exposing (Song, get_data)
+import App as App
 import Browser.Navigation exposing (pushUrl)
+import Api exposing (login)
 import Element exposing (..)
-import Element.Events exposing (onClick)
-import Element.Input as Input
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events exposing (onClick)
 import Element.Font as Font
+import Element.Input as Input
 import Hls exposing (initialize)
 import Html as Html
 import Html.Attributes as HtmlAttribute
@@ -30,21 +31,22 @@ type alias Model =
 
 
 
--- State
-
 
 type Msg
     = NoOp
     | UsernameInput String
     | PasswordInput String
+    | SubmitLogin
+    | LoginResponse (WebData String)
 
 
-init : Session -> ( Model, Cmd Msg )
+init : Session -> ( Model, Cmd (App.Msg a))
 init session =
     ( { username = "", password = "" }, Cmd.none )
 
+login username password = Api.login (App.handle_login) username password
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd (App.Msg a))
 update msg model =
     case msg of
         UsernameInput val ->
@@ -55,6 +57,11 @@ update msg model =
         PasswordInput val ->
             ( { model | password = val }
             , Cmd.none
+            )
+
+        SubmitLogin ->
+            ( { model | password = "",username = "" }
+            , login model.username model.password
             )
 
         _ ->
@@ -70,19 +77,43 @@ update msg model =
 render model =
     Element.column []
         [ Input.text
-            [ Border.width 0
+            [ Border.width 1
             , focused [ Border.shadow { offset = ( 0, 0 ), size = 0, blur = 0, color = rgb 0 0 0 } ]
             , Border.rounded 0
             ]
-            { onChange = UsernameInput
+            { onChange = to_app_msg UsernameInput
             , text = model.username
-            , placeholder = Nothing
+            , placeholder = Just (Input.placeholder [] <| text "Username")
             , label = Input.labelHidden ""
+            }
+        , Input.text
+            [ Border.width 1
+            , focused [ Border.shadow { offset = ( 0, 0 ), size = 0, blur = 0, color = rgb 0 0 0 } ]
+            , Border.rounded 0
+            ]
+            { onChange = to_app_msg PasswordInput
+            , text = model.password
+            , placeholder = Just (Input.placeholder [] <| text "Password")
+            , label = Input.labelHidden ""
+            }
+        , Input.button
+            [ height (px 40)
+            , centerY
+            , Border.width 2
+            , Border.color Styles.blue
+            , Font.size 12
+            , Font.center
+            , Font.color Styles.blue
+            , Font.bold
+            , width (px 100)
+            ]
+            { onPress = Just (app_msg SubmitLogin)
+            , label = text "Login"
             }
         ]
 
 
-view : Model -> TitleAndContent Msg
+view : Model -> TitleAndContent (App.Msg a)
 view model =
     { title = "Login"
     , content = render model
