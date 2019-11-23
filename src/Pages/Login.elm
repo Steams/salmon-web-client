@@ -1,6 +1,5 @@
-module Pages.Login exposing (Model, Msg, init, update, view)
+module Pages.Login exposing (Model, Msg(..), init, update, view)
 
-import App as App
 import Browser.Navigation exposing (pushUrl)
 import Api exposing (login)
 import Element exposing (..)
@@ -31,7 +30,6 @@ type alias Model =
 
 
 
-
 type Msg
     = NoOp
     | UsernameInput String
@@ -40,13 +38,13 @@ type Msg
     | LoginResponse (WebData String)
 
 
-init : Session -> ( Model, Cmd (App.Msg a))
+init : Session -> ( Model, Cmd Msg)
 init session =
     ( { username = "", password = "" }, Cmd.none )
 
-login username password = Api.login (App.handle_login) username password
+login username password = Api.login (LoginResponse) username password
 
-update : Msg -> Model -> ( Model, Cmd (App.Msg a))
+update : Msg -> Model -> ( Model, Cmd Msg)
 update msg model =
     case msg of
         UsernameInput val ->
@@ -81,7 +79,7 @@ render model =
             , focused [ Border.shadow { offset = ( 0, 0 ), size = 0, blur = 0, color = rgb 0 0 0 } ]
             , Border.rounded 0
             ]
-            { onChange = to_app_msg UsernameInput
+            { onChange = UsernameInput
             , text = model.username
             , placeholder = Just (Input.placeholder [] <| text "Username")
             , label = Input.labelHidden ""
@@ -91,7 +89,7 @@ render model =
             , focused [ Border.shadow { offset = ( 0, 0 ), size = 0, blur = 0, color = rgb 0 0 0 } ]
             , Border.rounded 0
             ]
-            { onChange = to_app_msg PasswordInput
+            { onChange = PasswordInput
             , text = model.password
             , placeholder = Just (Input.placeholder [] <| text "Password")
             , label = Input.labelHidden ""
@@ -107,13 +105,13 @@ render model =
             , Font.bold
             , width (px 100)
             ]
-            { onPress = Just (app_msg SubmitLogin)
+            { onPress = Just SubmitLogin
             , label = text "Login"
             }
         ]
 
 
-view : Model -> TitleAndContent (App.Msg a)
+view : Model -> TitleAndContent Msg
 view model =
     { title = "Login"
     , content = render model

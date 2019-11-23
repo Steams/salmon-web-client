@@ -57,7 +57,7 @@ login handler username password =
     Http.request
         { method = "POST"
         , headers = []
-        , url = "http://localhost:8080/login"
+        , url = "http://localhost:8080/api/login"
         , body =
             Http.jsonBody <|
                 Encode.object

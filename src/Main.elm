@@ -1,6 +1,5 @@
 module Main exposing (main)
 
-import App as App
 import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Element exposing (..)
@@ -33,7 +32,7 @@ type alias Model =
 -- MODEL
 
 
-init : Session.Flags -> Url -> Nav.Key -> ( Model, Cmd (App.Msg a) )
+init : Session.Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url navKey =
     let
         model =
@@ -49,51 +48,40 @@ init flags url navKey =
 -- VIEW
 
 
-view : Model -> Document (App.Msg msg)
+view : Model -> Document Msg
 view model =
     let
-        -- render : Layout.Layout -> (subMsg -> (App.Msg msg)) -> Layout.TitleAndContent subMsg -> Document Msg
-        -- render layout msg_wrapper page =
-        --     Layout.render layout { title = page.title, content = Element.map msg_wrapper page.content }
-        -- render layout page =
-        --     Layout.render layout { title = page.title, content = page.content }
-        _ =
-            ""
+        render : Layout.Layout -> (subMsg -> Msg) -> Layout.TitleAndContent subMsg -> Document Msg
+        render layout msg_wrapper page =
+            Layout.render layout { title = page.title, content = Element.map msg_wrapper page.content }
     in
     case model.page of
         Redirect ->
-            Layout.render Layout.Other Blank.view
+            render Layout.Other (\_ -> NoOp) Blank.view
 
         NotFound ->
-            Layout.render Layout.Other NotFound.view
+            render Layout.Other (\_ -> NoOp) NotFound.view
 
         Home home ->
-            Layout.render Layout.Home (Home.view home)
+            render Layout.Home HomeMsg (Home.view home)
 
         Login login ->
-            Layout.render Layout.Login (Login.view login)
+            render Layout.Login LoginMsg (Login.view login)
 
 
 
--- Redirect ->
---     render Layout.Other (\_ -> NoOp) Blank.view
--- NotFound ->
---     render Layout.Other (\_ -> NoOp) NotFound.view
--- Home home ->
---     render Layout.Home (App.HomeMsg >> App.LocalMsg) (Home.view home)
--- Login login ->
---     render Layout.Login LoginMsg (Login.view login)
 -- UPDATE
--- type Msg
---     = ChangeUrl Url
---     | RequestUrl Browser.UrlRequest
---     | HomeMsg Home.Msg
---     | LoginMsg Login.Msg
---     | GlobalMsg App.Msg
---     | NoOp
 
 
-goto : Maybe Route -> Model -> ( Model, Cmd (App.Msg a) )
+type Msg
+    = ChangeUrl Url
+    | RequestUrl Browser.UrlRequest
+    | HomeMsg Home.Msg
+    | LoginMsg Login.Msg
+    | NoOp
+
+
+goto : Maybe Route -> Model -> ( Model, Cmd Msg )
 goto maybeRoute model =
     case maybeRoute of
         Nothing ->
@@ -108,7 +96,7 @@ goto maybeRoute model =
                     Home.init model.session
             in
             ( { model | page = Home home }
-            , home_msg
+            , Cmd.map HomeMsg home_msg
             )
 
         Just Route.Login ->
@@ -117,28 +105,14 @@ goto maybeRoute model =
                     Login.init model.session
             in
             ( { model | page = Login login }
-            , login_msg
+            , Cmd.map LoginMsg login_msg
             )
 
 
-
--- LoginResponse (Success id) ->
---     let _= Debug.log "ID RESPONSE : " id
---     in
---     ( model
---     ,
---     )
--- LoginResponse data ->
---     let _= Debug.log "Login failed RESPONSE : " data
---     in
---     ( model
---     , Cmd.none
---     )
-
-handle_global_msg : App.GlobalMsg -> Model -> ( Model, Cmd (App.Msg a) )
-handle_global_msg msg model =
-    case msg of
-        App.RequestUrl urlRequest ->
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case ( msg, model.page ) of
+        ( RequestUrl urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
                     ( model, Nav.pushUrl model.session.navKey (Url.toString url) )
@@ -146,11 +120,14 @@ handle_global_msg msg model =
                 Browser.External href ->
                     ( model, Nav.load href )
 
-        App.ChangeUrl url ->
+        ( ChangeUrl url, _ ) ->
             goto (Route.fromUrl url) model
 
-        App.LoginResponse (Success id) ->
+        ( LoginMsg (Login.LoginResponse (Success id)), _ ) ->
             let
+                _ =
+                    Debug.log "ID RESPONSE : " id
+
                 session =
                     model.session
 
@@ -161,56 +138,40 @@ handle_global_msg msg model =
             , Cmd.none
             )
 
-        App.LoginResponse res ->
+        ( LoginMsg (Login.LoginResponse res), _ ) ->
             let
                 _ =
-                    Debug.log "login response :" res
+                    Debug.log "Failed Login Response : " res
             in
             ( model, Cmd.none )
 
-
-handle_local_msg : App.PageMsg a -> Model -> ( Model, Cmd (App.Msg a) )
-handle_local_msg msg model =
-    case ( msg, model.page ) of
-        ( App.LoginMsg subMsg, Login login ) ->
+        ( LoginMsg subMsg, Login login ) ->
             let
                 ( login_model, login_msg ) =
                     Login.update subMsg login
             in
             ( { model | page = Login login_model }
-            , login_msg
+            , Cmd.map LoginMsg login_msg
             )
 
-        ( App.HomeMsg subMsg, Home home ) ->
+        ( HomeMsg subMsg, Home home ) ->
             let
                 ( home_model, home_msg ) =
                     Home.update subMsg home
             in
             ( { model | page = Home home_model }
-            , home_msg
+            , Cmd.map HomeMsg home_msg
             )
 
         ( _, _ ) ->
             ( model, Cmd.none )
-
-update : (App.Msg a) -> Model -> ( Model, Cmd (App.Msg a) )
-update msg model =
-    case msg of
-        App.Global g ->
-            handle_global_msg g model
-
-        App.LocalMsg l ->
-            handle_local_msg l model
-
-
-
 
 
 
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub (App.Msg a)
+subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         []
@@ -220,12 +181,12 @@ subscriptions model =
 -- MAIN
 
 
-main : Program Session.Flags Model (App.Msg a)
+main : Program Session.Flags Model Msg
 main =
     Browser.application
         { init = init
-        , onUrlChange = App.ChangeUrl
-        , onUrlRequest = App.RequestUrl
+        , onUrlChange = ChangeUrl
+        , onUrlRequest = RequestUrl
         , subscriptions = subscriptions
         , update = update
         , view = view
