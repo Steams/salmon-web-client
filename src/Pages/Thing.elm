@@ -1,4 +1,4 @@
-module Components.Thing exposing (Model, Msg, init, update, view)
+module Pages.Thing exposing (Model, Msg, init, update, view)
 
 import Browser.Navigation exposing (pushUrl)
 import Element exposing (..)

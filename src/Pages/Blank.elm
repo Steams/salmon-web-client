@@ -1,4 +1,4 @@
-module Components.Blank exposing (view)
+module Pages.Blank exposing (view)
 
 import Element exposing (..)
 import Layout exposing (TitleAndContent)

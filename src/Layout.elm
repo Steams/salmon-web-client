@@ -9,7 +9,7 @@ import Styles
 type Layout
     = Other
     | Home
-    | Thing
+    | Login
 
 
 type alias TitleAndContent msg =
@@ -50,7 +50,7 @@ header : Layout -> Element msg
 header layout =
     Element.row Styles.nav_bar
         [ navLink layout Route.Home <| Element.el Styles.nav_item <| Element.text "Home"
-        , navLink layout (Route.Thing "template") <| Element.el Styles.nav_item <| Element.text "Thing"
+        , navLink layout (Route.Login) <| Element.el Styles.nav_item <| Element.text "Login"
         ]
 
 
@@ -68,7 +68,7 @@ isActive layout route =
         ( Home, Route.Home ) ->
             True
 
-        ( Thing, Route.Thing s ) ->
+        ( Login, Route.Login ) ->
             True
 
         _ ->

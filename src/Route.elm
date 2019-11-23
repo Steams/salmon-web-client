@@ -7,15 +7,15 @@ import Url.Parser as Parser exposing ((</>), Parser, int, oneOf, s, string, top)
 
 type Route
     = Root
-    | Thing String
     | Home
+    | Login
 
 
 parser : Parser (Route -> a) a
 parser =
     oneOf
         [ Parser.map Home top
-        , Parser.map Thing (s "thing" </> string)
+        , Parser.map Login (s "login")
         ]
 
 
@@ -35,8 +35,8 @@ toUrl route =
                 Home ->
                     []
 
-                Thing name ->
-                    [ "thing", name ]
+                Login ->
+                    [ "login" ]
     in
     "/" ++ String.join "/" pathSegments
 

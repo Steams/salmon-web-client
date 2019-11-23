@@ -52,13 +52,14 @@ get_data handler =
     get "http://localhost:8080/media" handler song_list_decoder
 
 
-
--- get : Endpoint -> (WebData a -> msg) -> Decoder a -> Cmd msg
-
-
 get : String -> (WebData a -> msg) -> Decoder a -> Cmd msg
 get endpoint handler decoder =
-    Http.get
-        { url = endpoint
-        , expect = Http.expectJson (\x -> handler (RemoteData.fromResult x)) decoder
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" "1" ]
+        , url = endpoint
+        , body = Http.emptyBody
+        , expect = Http.expectJson (RemoteData.fromResult >> handler) decoder
+        , timeout = Nothing
+        , tracker = Nothing
         }

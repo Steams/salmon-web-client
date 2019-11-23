@@ -2,10 +2,10 @@ module Main exposing (main)
 
 import Browser exposing (Document)
 import Browser.Navigation as Nav
-import Components.Blank as Blank
-import Components.Home as Home
-import Components.NotFound as NotFound
-import Components.Thing as Thing
+import Pages.Blank as Blank
+import Pages.Home as Home
+import Pages.Login as Login
+import Pages.NotFound as NotFound
 import Element exposing (..)
 import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
@@ -18,8 +18,8 @@ import Url exposing (Url)
 
 type Page
     = Redirect
-    | Thing Thing.Model
     | Home Home.Model
+    | Login Login.Model
     | NotFound
 
 
@@ -46,7 +46,6 @@ init flags url navKey =
 
 -- VIEW
 
-
 view : Model -> Document Msg
 view model =
     let
@@ -64,8 +63,8 @@ view model =
         Home home ->
             render Layout.Home HomeMsg (Home.view home)
 
-        Thing thing ->
-            render Layout.Thing ThingMsg (Thing.view thing)
+        Login login ->
+            render Layout.Login LoginMsg (Login.view login)
 
 
 
@@ -76,12 +75,10 @@ type Msg
     = ChangeUrl Url
     | RequestUrl Browser.UrlRequest
     | HomeMsg Home.Msg
-    | ThingMsg Thing.Msg
+    | LoginMsg Login.Msg
     | NoOp
 
 
-
--- | GotSession Session
 
 
 goto : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -102,13 +99,13 @@ goto maybeRoute model =
             , Cmd.map HomeMsg home_msg
             )
 
-        Just (Route.Thing x) ->
+        Just Route.Login ->
             let
-                ( thing, thing_msg ) =
-                    Thing.init model.session x
+                ( login, login_msg ) =
+                    Login.init model.session
             in
-            ( { model | page = Thing thing }
-            , Cmd.map ThingMsg thing_msg
+            ( { model | page = Login login }
+            , Cmd.map LoginMsg login_msg
             )
 
 
@@ -126,13 +123,13 @@ update msg model =
         ( ChangeUrl url, _ ) ->
             goto (Route.fromUrl url) model
 
-        ( ThingMsg subMsg, Thing x ) ->
+        ( LoginMsg subMsg, Login login) ->
             let
-                ( thing_model, thing_msg ) =
-                    Thing.update subMsg x
+                ( login_model, login_msg ) =
+                    Login.update subMsg login
             in
-            ( { model | page = Thing thing_model }
-            , Cmd.map ThingMsg thing_msg
+            ( { model | page = Login login_model }
+            , Cmd.map LoginMsg login_msg
             )
 
         ( HomeMsg subMsg, Home home ) ->

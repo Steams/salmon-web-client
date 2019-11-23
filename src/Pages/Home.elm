@@ -1,4 +1,4 @@
-module Components.Home exposing (Model, Msg, init, update, view)
+module Pages.Home exposing (Model, Msg, init, update, view)
 
 import Api exposing (Song, get_data)
 import Browser.Navigation exposing (pushUrl)
