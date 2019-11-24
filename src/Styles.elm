@@ -52,6 +52,16 @@ font_small =
     Font.size 16
 
 
+title value options =
+    el
+        ([ centerX
+        , Font.size 35
+        , Font.family [ Font.typeface "Roboto" ]
+        , Font.bold
+        , Font.color (rgb255 120 145 155)
+        ] ++ options)
+    <|
+        text value
 
 -- Utils
 

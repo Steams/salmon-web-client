@@ -10,6 +10,7 @@ import Pages.Blank as Blank
 import Pages.Home as Home
 import Pages.Login as Login
 import Pages.NotFound as NotFound
+import Pages.Signup as Signup
 import RemoteData as RemoteData exposing (RemoteData(..), WebData)
 import Route exposing (Route)
 import Session exposing (Session)
@@ -21,6 +22,7 @@ type Page
     = Redirect
     | Home Home.Model
     | Login Login.Model
+    | Signup Signup.Model
     | NotFound
 
 
@@ -39,7 +41,13 @@ init flags url navKey =
             Model (Session.init flags navKey) Redirect
 
         route =
-            Route.fromUrl url
+            if model.session.sessionToken == "" then
+                -- Just Route.Login
+                -- Just Route.Home
+                Route.fromUrl url
+
+            else
+                Route.fromUrl url
     in
     goto route model
 
@@ -68,6 +76,9 @@ view model =
         Login login ->
             render Layout.Login LoginMsg (Login.view login)
 
+        Signup signup ->
+            render Layout.Signup SignupMsg (Signup.view signup)
+
 
 
 -- UPDATE
@@ -78,6 +89,7 @@ type Msg
     | RequestUrl Browser.UrlRequest
     | HomeMsg Home.Msg
     | LoginMsg Login.Msg
+    | SignupMsg Signup.Msg
     | NoOp
 
 
@@ -108,6 +120,15 @@ goto maybeRoute model =
             , Cmd.map LoginMsg login_msg
             )
 
+        Just Route.Signup ->
+            let
+                ( signup, signup_msg ) =
+                    Signup.init model.session
+            in
+            ( { model | page = Signup signup }
+            , Cmd.map SignupMsg signup_msg
+            )
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -135,7 +156,7 @@ update msg model =
                     { session | sessionToken = id }
             in
             ( { model | session = new_session }
-            , Cmd.none
+            , Nav.pushUrl session.navKey (Route.toUrl Route.Home)
             )
 
         ( LoginMsg (Login.LoginResponse res), _ ) ->
@@ -148,10 +169,19 @@ update msg model =
         ( LoginMsg subMsg, Login login ) ->
             let
                 ( login_model, login_msg ) =
-                    Login.update subMsg login
+                    Login.update model.session subMsg login
             in
             ( { model | page = Login login_model }
             , Cmd.map LoginMsg login_msg
+            )
+
+        ( SignupMsg subMsg, Signup signup ) ->
+            let
+                ( signup_model, signup_msg ) =
+                    Signup.update model.session subMsg signup
+            in
+            ( { model | page = Signup signup_model }
+            , Cmd.map SignupMsg signup_msg
             )
 
         ( HomeMsg subMsg, Home home ) ->

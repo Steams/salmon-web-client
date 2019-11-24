@@ -1,4 +1,4 @@
-module Pages.Login exposing (Model, Msg(..), init, update, view)
+module Pages.Signup exposing (Model, Msg(..), init, update, view)
 
 import Api exposing (login)
 import Browser.Navigation as Nav
@@ -26,6 +26,7 @@ import Styles
 type alias Model =
     { username : String
     , password : String
+    , email : String
     }
 
 
@@ -33,18 +34,18 @@ type Msg
     = NoOp
     | UsernameInput String
     | PasswordInput String
-    | SubmitLogin
-    | LoginResponse (WebData String)
-    | Signup
+    | EmailInput String
+    | SubmitSignup
+    | SignupResponse (WebData String)
+    | Login
 
 
 init : Session -> ( Model, Cmd Msg )
 init session =
-    ( { username = "", password = "" }, Cmd.none )
+    ( { username = "", password = "", email = "" }, Cmd.none )
 
-
-login username password =
-    Api.login LoginResponse username password
+signup username password email =
+    Api.signup SignupResponse username password email
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
@@ -60,16 +61,20 @@ update session msg model =
             , Cmd.none
             )
 
-        SubmitLogin ->
+        EmailInput val ->
+            ( { model | email = val }
+            , Cmd.none
+            )
+
+        SubmitSignup ->
             ( { model | password = "", username = "" }
-            , login model.username model.password
+            , signup model.username model.password model.email
             )
 
-        Signup ->
+        Login ->
             ( model
-            , Nav.pushUrl session.navKey (Route.toUrl Route.Signup)
+            , Nav.pushUrl session.navKey (Route.toUrl Route.Login)
             )
-
         _ ->
             ( model
             , Cmd.none
@@ -130,7 +135,7 @@ title value =
         text value
 
 
-signup_panel =
+login_panel =
     Element.el
         [ width (fillPortion 2)
         , height fill
@@ -138,31 +143,31 @@ signup_panel =
         , Font.color (rgb255 255 255 255)
         ]
     <|
-        Element.column [ centerY, centerX , spacing 40]
-            [ Styles.title "First Time? Create an account!" [ Font.color (rgb255 255 255 255) ]
-            , paragraph [width (px 400)]
-                [ text "Join Salmon now to stream all ur media anywhere you have a pblah a w rest of sentence theere pargarpah the quick borwn fox"
+        Element.column [ centerY, centerX, spacing 40 ]
+            [ Styles.title "Already have an account ? Log In!" [ Font.color (rgb255 255 255 255) ]
+            , paragraph [ width (px 400) ]
+                [ text "To keep enjoying Salmon media streaming, click here log in "
                 ]
-            , button "SIGN UP" Signup
+            , button "LOG IN" Login
             ]
 
 
-login_panel username password =
-    Element.column [ width (fillPortion 3), spacing 60, centerY]
-        [ title "Log in to Salmon"
+signup_panel username password email =
+    Element.column [ width (fillPortion 3), spacing 60, centerY ]
+        [ title "Create Account"
         , Element.column [ centerX, spacing 20 ]
             [ input "Username" UsernameInput username
+            , input "Email" EmailInput email
             , input "Password" PasswordInput password
             ]
-        , el [ centerX ] <| text "Forgot your password ?"
-        , button "LOG IN" SubmitLogin
+        , button "SIGN UP" SubmitSignup
         ]
 
 
 render model =
     Element.row [ width fill, height fill ]
-        [ login_panel model.username model.password
-        , signup_panel
+        [ login_panel
+        , signup_panel model.username model.password model.email
         ]
 
 

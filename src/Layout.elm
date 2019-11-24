@@ -10,6 +10,7 @@ type Layout
     = Other
     | Home
     | Login
+    | Signup
 
 
 type alias TitleAndContent msg =
@@ -40,9 +41,10 @@ render layout page =
 view_container : Layout -> Element msg -> Element msg
 view_container layout content =
     Element.column
-        [ width fill ]
-        [ header layout
-        , content
+        [ width fill, height fill]
+        [
+         -- header layout ,
+             content
         ]
 
 

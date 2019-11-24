@@ -1,4 +1,4 @@
-module Api exposing (Song, get_data,login)
+module Api exposing (Song, get_data,login,signup)
 
 import Http as Http
 import Json.Decode as Decode exposing (Decoder, field, int, string)
@@ -34,6 +34,8 @@ type alias Credentials =
 
 type alias Song =
     { title : String
+    , artist : String
+    , album : String
     , duration : Int
     , playlist : String
     }
@@ -41,8 +43,10 @@ type alias Song =
 
 song_decoder : Decoder Song
 song_decoder =
-    Decode.map3 Song
+    Decode.map5 Song
         (field "Title" string)
+        (field "Artist" string)
+        (field "Album" string)
         (field "Duration" int)
         (field "Playlist" string)
 
@@ -63,6 +67,24 @@ login handler username password =
                 Encode.object
                     [ ( "username", Encode.string username )
                     , ( "password", Encode.string password )
+                    ]
+        , expect = Http.expectJson (RemoteData.fromResult >> handler) string
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+signup : (WebData String -> msg) -> String -> String -> String -> Cmd msg
+signup handler username password email =
+    Http.request
+        { method = "POST"
+        , headers = []
+        , url = "http://localhost:8080/api/signup"
+        , body =
+            Http.jsonBody <|
+                Encode.object
+                    [ ( "username", Encode.string username )
+                    , ( "password", Encode.string password )
+                    , ( "email", Encode.string email )
                     ]
         , expect = Http.expectJson (RemoteData.fromResult >> handler) string
         , timeout = Nothing

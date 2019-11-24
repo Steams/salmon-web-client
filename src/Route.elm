@@ -9,6 +9,7 @@ type Route
     = Root
     | Home
     | Login
+    | Signup
 
 
 parser : Parser (Route -> a) a
@@ -16,6 +17,7 @@ parser =
     oneOf
         [ Parser.map Home top
         , Parser.map Login (s "login")
+        , Parser.map Signup (s "signup")
         ]
 
 
@@ -37,6 +39,8 @@ toUrl route =
 
                 Login ->
                     [ "login" ]
+                Signup ->
+                    [ "signup" ]
     in
     "/" ++ String.join "/" pathSegments
 
