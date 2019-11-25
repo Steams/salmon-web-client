@@ -114,8 +114,8 @@ get : Credentials -> String -> (WebData a -> msg) -> Decoder a -> Cmd msg
 get credentials endpoint handler decoder =
     Http.request
         { method = "GET"
-        -- , headers = [ Http.header "Authorization" credentials ]
-        , headers = [ Http.header "Authorization" "1" ]
+        , headers = [ Http.header "Authorization" credentials ]
+        -- , headers = [ Http.header "Authorization" "1" ]
         , url = endpoint
         , body = Http.emptyBody
         , expect = Http.expectJson (RemoteData.fromResult >> handler) decoder

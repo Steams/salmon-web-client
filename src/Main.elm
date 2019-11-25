@@ -6,6 +6,7 @@ import Browser.Navigation as Nav
 import Element exposing (..)
 import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
+import Json.Encode as Encode
 import Layout as Layout
 import Pages.Blank as Blank
 import Pages.Home as Home
@@ -17,6 +18,7 @@ import Route exposing (Route)
 import Session exposing (Session)
 import Task
 import Url exposing (Url)
+import Hls as Hls
 
 
 type Page
@@ -39,8 +41,8 @@ init flags url navKey =
 
         route =
             if model.session.sessionToken == "" then
-                -- Just Route.Login
-                Just Route.Home
+                Just Route.Login
+                -- Just Route.Home
                 -- Route.fromUrl url
 
             else
@@ -97,7 +99,9 @@ goto maybeRoute model =
 
         Just (Route.Verification token) ->
             let
-                _ = Debug.log "verification request" token
+                _ =
+                    Debug.log "verification request" token
+
                 ( signup, signup_msg ) =
                     Signup.init model.session
             in
@@ -154,7 +158,10 @@ update msg model =
                     { session | sessionToken = id }
             in
             ( { model | session = new_session }
-            , Nav.pushUrl session.navKey (Route.toUrl Route.Home)
+            , Cmd.batch
+                [ Hls.storeSession (Encode.string id)
+                , Nav.pushUrl session.navKey (Route.toUrl Route.Home)
+                ]
             )
 
         ( LoginMsg (Login.LoginResponse res), _ ) ->
