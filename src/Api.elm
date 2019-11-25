@@ -1,4 +1,4 @@
-module Api exposing (Song, get_data,login,signup)
+module Api exposing (Song, get_data,login,signup,verify)
 
 import Http as Http
 import Json.Decode as Decode exposing (Decoder, field, int, string)
@@ -91,6 +91,19 @@ signup handler username password email =
         , tracker = Nothing
         }
 
+verify : (WebData String -> msg) -> String -> Cmd msg
+verify handler token  =
+    Http.request
+        { method = "POST"
+        , headers = []
+        , url = "http://localhost:8080/api/verify"
+        , body =
+            Http.jsonBody <| Encode.string token
+        , expect = Http.expectJson (RemoteData.fromResult >> handler) string
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
 
 get_data : Credentials -> (WebData (List Song) -> msg) -> Cmd msg
 get_data credentials handler =
@@ -101,7 +114,8 @@ get : Credentials -> String -> (WebData a -> msg) -> Decoder a -> Cmd msg
 get credentials endpoint handler decoder =
     Http.request
         { method = "GET"
-        , headers = [ Http.header "Authorization" credentials ]
+        -- , headers = [ Http.header "Authorization" credentials ]
+        , headers = [ Http.header "Authorization" "1" ]
         , url = endpoint
         , body = Http.emptyBody
         , expect = Http.expectJson (RemoteData.fromResult >> handler) decoder

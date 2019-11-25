@@ -116,7 +116,7 @@ sidebar =
         [ height fill
         , width (px 300)
         , Border.widthEach { edges | right = 1 }
-        , Border.color (rgb255 227 227 227)
+        , Border.color Styles.black
         , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 5, color = rgb255 217 217 217 }
         ]
         [ Styles.title "SALMON" [] ]
@@ -125,14 +125,14 @@ sidebar =
 table_header =
     let
         header x =
-            Element.el [ width <| fillPortion 1, Font.alignLeft ] <| text x
+            Styles.title x [ width <| fillPortion 1, Font.alignLeft, Font.extraBold, Font.size 16 ]
     in
     Element.row [ width fill, Border.widthEach { edges | bottom = 1 }, height (px 60) ]
         [ header "TITLE"
         , header "ARTIST"
         , header "ALBUM"
         , header "ADDED"
-        , header "DURATION"
+        , header "TIME"
         ]
 
 
@@ -141,7 +141,14 @@ row_item value =
 
 
 song_row song =
-    Element.row [ width fill, onClick <| LoadSong song ]
+    Element.row
+        [ width fill
+        , onClick <| LoadSong song
+        , Font.size 15
+        , Font.bold
+        , Font.color Styles.text_black
+        , pointer
+        ]
         [ row_item song.title
         , row_item song.artist
         , row_item song.album
@@ -157,6 +164,7 @@ song_table songs =
 button value handler =
     Input.button
         [ height (px 40)
+        , width (px 100)
         , centerX
         , Border.width 2
         , Border.color Styles.blue
@@ -164,19 +172,28 @@ button value handler =
         , Font.center
         , Font.color Styles.blue
         , Font.bold
-        , width (px 100)
         ]
         { onPress = Just handler
         , label = text value
         }
 
 
-player title =
-    Element.row [ alignBottom, Background.color (rgb255 207 152 153), width fill, height (px 50) ]
-        [ html <| Html.audio [ HtmlAttribute.attribute "id" "hls-audio" ] []
-        , el [] <| text title
+player title album =
+    Element.row
+        [ alignBottom
+        , Background.color Styles.pink
+        , width fill
+        , height (px 80)
+        , paddingXY 100 0
+        , Font.color Styles.white
+        ]
+        [ Element.column [ spacing 7 ]
+            [ el [ Font.bold, Font.size 19 ] <| text title
+            , el [ Font.size 15 ] <| text album
+            ]
         , button "Pause" Pause
         , button "Play" Play
+        , html <| Html.audio [ HtmlAttribute.attribute "id" "hls-audio" ] []
         ]
 
 
@@ -188,22 +205,22 @@ render model =
         Success songs ->
             -- HtmlAttribute.attribute "controls" ""
             let
-                title =
+                ( title, album ) =
                     case model.active of
                         Nothing ->
-                            ""
+                            ( "", "" )
 
                         Just x ->
-                            "Now playing : " ++ x.title
+                            ( x.title, x.album )
             in
             Element.row
                 [ width fill
                 , height fill
-                , inFront <| player title
+                , inFront <| player title album
                 , Font.family [ Font.typeface "Open Sans" ]
                 ]
-                [ sidebar
-                , Element.column
+                [ -- sidebar
+                  Element.column
                     [ height fill
                     , width fill
                     , paddingXY 20 50

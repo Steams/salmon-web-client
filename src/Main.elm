@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Api as Api
 import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Element exposing (..)
@@ -30,10 +31,6 @@ type alias Model =
     { session : Session, page : Page }
 
 
-
--- MODEL
-
-
 init : Session.Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url navKey =
     let
@@ -43,45 +40,13 @@ init flags url navKey =
         route =
             if model.session.sessionToken == "" then
                 -- Just Route.Login
-                -- Just Route.Home
-                Route.fromUrl url
+                Just Route.Home
+                -- Route.fromUrl url
 
             else
                 Route.fromUrl url
     in
     goto route model
-
-
-
--- VIEW
-
-
-view : Model -> Document Msg
-view model =
-    let
-        render : Layout.Layout -> (subMsg -> Msg) -> Layout.TitleAndContent subMsg -> Document Msg
-        render layout msg_wrapper page =
-            Layout.render layout { title = page.title, content = Element.map msg_wrapper page.content }
-    in
-    case model.page of
-        Redirect ->
-            render Layout.Other (\_ -> NoOp) Blank.view
-
-        NotFound ->
-            render Layout.Other (\_ -> NoOp) NotFound.view
-
-        Home home ->
-            render Layout.Home HomeMsg (Home.view home)
-
-        Login login ->
-            render Layout.Login LoginMsg (Login.view login)
-
-        Signup signup ->
-            render Layout.Signup SignupMsg (Signup.view signup)
-
-
-
--- UPDATE
 
 
 type Msg
@@ -90,6 +55,7 @@ type Msg
     | HomeMsg Home.Msg
     | LoginMsg Login.Msg
     | SignupMsg Signup.Msg
+    | VerificationResponse (WebData String)
     | NoOp
 
 
@@ -129,6 +95,16 @@ goto maybeRoute model =
             , Cmd.map SignupMsg signup_msg
             )
 
+        Just (Route.Verification token) ->
+            let
+                _ = Debug.log "verification request" token
+                ( signup, signup_msg ) =
+                    Signup.init model.session
+            in
+            ( { model | page = Redirect }
+            , Api.verify VerificationResponse token
+            )
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -143,6 +119,28 @@ update msg model =
 
         ( ChangeUrl url, _ ) ->
             goto (Route.fromUrl url) model
+
+        ( VerificationResponse (Success token), _ ) ->
+            let
+                _ =
+                    Debug.log "verification RESPONSE : " token
+
+                session =
+                    model.session
+
+                new_session =
+                    { session | sessionToken = token }
+            in
+            ( { model | session = new_session }
+            , Nav.pushUrl session.navKey (Route.toUrl Route.Home)
+            )
+
+        ( VerificationResponse res, _ ) ->
+            let
+                _ =
+                    Debug.log "Failed verificaiton response" res
+            in
+            ( model, Cmd.none )
 
         ( LoginMsg (Login.LoginResponse (Success id)), _ ) ->
             let
@@ -195,6 +193,34 @@ update msg model =
 
         ( _, _ ) ->
             ( model, Cmd.none )
+
+
+
+-- VIEW
+
+
+view : Model -> Document Msg
+view model =
+    let
+        render : Layout.Layout -> (subMsg -> Msg) -> Layout.TitleAndContent subMsg -> Document Msg
+        render layout msg_wrapper page =
+            Layout.render layout { title = page.title, content = Element.map msg_wrapper page.content }
+    in
+    case model.page of
+        Redirect ->
+            render Layout.Other (\_ -> NoOp) Blank.view
+
+        NotFound ->
+            render Layout.Other (\_ -> NoOp) NotFound.view
+
+        Home home ->
+            render Layout.Home HomeMsg (Home.view home)
+
+        Login login ->
+            render Layout.Login LoginMsg (Login.view login)
+
+        Signup signup ->
+            render Layout.Signup SignupMsg (Signup.view signup)
 
 
 

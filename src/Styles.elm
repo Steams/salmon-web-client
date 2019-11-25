@@ -9,8 +9,10 @@ import Element.Font as Font
 
 -- Colors
 
+
 blue =
     rgb255 5 100 245
+
 
 primary_green =
     rgb255 0 209 178
@@ -32,16 +34,36 @@ white =
     rgb255 255 255 255
 
 
+input_background =
+    rgb255 244 248 248
+
+
 text_grey =
-    rgba255 0 0 0 0.8
+    rgb255 125 125 125
+
+
+text_black =
+    rgb255 105 105 105
 
 
 grey =
     rgb255 74 74 74
 
 
+green =
+    rgb255 120 145 155
+
+
 light_grey =
     rgba255 0 0 0 0.2
+
+
+red =
+    rgb255 173 72 102
+
+
+pink =
+    rgb255 207 152 153
 
 
 
@@ -55,13 +77,17 @@ font_small =
 title value options =
     el
         ([ centerX
-        , Font.size 35
-        , Font.family [ Font.typeface "Roboto" ]
-        , Font.bold
-        , Font.color (rgb255 120 145 155)
-        ] ++ options)
+         , Font.size 35
+         , Font.family [ Font.typeface "Roboto" ]
+         , Font.bold
+         , Font.color red
+         ]
+            ++ options
+        )
     <|
         text value
+
+
 
 -- Utils
 

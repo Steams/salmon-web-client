@@ -83,15 +83,15 @@ update session msg model =
 button value handler =
     Input.button
         [ height (px 60)
+        , width (px 300)
         , centerX
+        , Border.rounded 100
         , Border.width 2
         , Border.color Styles.blue
         , Font.size 12
         , Font.center
         , Font.color Styles.blue
         , Font.bold
-        , width (px 300)
-        , Border.rounded 100
         ]
         { onPress = Just handler
         , label = text value
@@ -100,16 +100,16 @@ button value handler =
 
 input placeholder handler value =
     Input.text
-        [ Border.width 0
-        , focused [ Border.shadow { offset = ( 0, 0 ), size = 0, blur = 0, color = rgb 0 0 0 } ]
-        , Border.rounded 0
-        , centerX
-        , width (px 400)
+        [ width (px 400)
         , height (px 65)
-        , Background.color (rgb255 244 248 248)
+        , centerX
         , paddingXY 20 22
+        , focused [ Border.shadow { offset = ( 0, 0 ), size = 0, blur = 0, color = Styles.black } ]
+        , Border.width 0
+        , Border.rounded 0
         , Font.size 20
-        , Font.color (rgb255 125 125 125)
+        , Font.color Styles.text_grey
+        , Background.color Styles.input_background
         ]
         { onChange = handler
         , text = value
@@ -124,7 +124,7 @@ title value =
         , Font.size 35
         , Font.family [ Font.typeface "Roboto" ]
         , Font.bold
-        , Font.color (rgb255 120 145 155)
+        , Font.color Styles.green
         ]
     <|
         text value
@@ -134,13 +134,13 @@ signup_panel =
     Element.el
         [ width (fillPortion 2)
         , height fill
-        , Background.color (rgb255 120 145 155)
-        , Font.color (rgb255 255 255 255)
+        , Background.color Styles.green
+        , Font.color Styles.white
         ]
     <|
-        Element.column [ centerY, centerX , spacing 40]
-            [ Styles.title "First Time? Create an account!" [ Font.color (rgb255 255 255 255) ]
-            , paragraph [width (px 400)]
+        Element.column [ centerY, centerX, spacing 40 ]
+            [ Styles.title "First Time? Create an account!" [ Font.color Styles.white ]
+            , paragraph [ width (px 400) ]
                 [ text "Join Salmon now to stream all ur media anywhere you have a pblah a w rest of sentence theere pargarpah the quick borwn fox"
                 ]
             , button "SIGN UP" Signup
@@ -148,7 +148,7 @@ signup_panel =
 
 
 login_panel username password =
-    Element.column [ width (fillPortion 3), spacing 60, centerY]
+    Element.column [ width (fillPortion 3), spacing 60, centerY ]
         [ title "Log in to Salmon"
         , Element.column [ centerX, spacing 20 ]
             [ input "Username" UsernameInput username

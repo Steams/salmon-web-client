@@ -44,6 +44,7 @@ init : Session -> ( Model, Cmd Msg )
 init session =
     ( { username = "", password = "", email = "" }, Cmd.none )
 
+
 signup username password email =
     Api.signup SignupResponse username password email
 
@@ -75,6 +76,7 @@ update session msg model =
             ( model
             , Nav.pushUrl session.navKey (Route.toUrl Route.Login)
             )
+
         _ ->
             ( model
             , Cmd.none
@@ -106,15 +108,15 @@ button value handler =
 input placeholder handler value =
     Input.text
         [ Border.width 0
-        , focused [ Border.shadow { offset = ( 0, 0 ), size = 0, blur = 0, color = rgb 0 0 0 } ]
         , Border.rounded 0
+        , Background.color Styles.input_background
+        , focused [ Border.shadow { offset = ( 0, 0 ), size = 0, blur = 0, color = rgb 0 0 0 } ]
         , centerX
         , width (px 400)
         , height (px 65)
-        , Background.color (rgb255 244 248 248)
         , paddingXY 20 22
         , Font.size 20
-        , Font.color (rgb255 125 125 125)
+        , Font.color Styles.text_grey
         ]
         { onChange = handler
         , text = value
@@ -129,7 +131,7 @@ title value =
         , Font.size 35
         , Font.family [ Font.typeface "Roboto" ]
         , Font.bold
-        , Font.color (rgb255 120 145 155)
+        , Font.color Styles.green
         ]
     <|
         text value
@@ -139,12 +141,12 @@ login_panel =
     Element.el
         [ width (fillPortion 2)
         , height fill
-        , Background.color (rgb255 120 145 155)
-        , Font.color (rgb255 255 255 255)
+        , Background.color Styles.green
+        , Font.color Styles.white
         ]
     <|
         Element.column [ centerY, centerX, spacing 40 ]
-            [ Styles.title "Already have an account ? Log In!" [ Font.color (rgb255 255 255 255) ]
+            [ Styles.title "Already have an account ? Log In!" [ Font.color Styles.white ]
             , paragraph [ width (px 400) ]
                 [ text "To keep enjoying Salmon media streaming, click here log in "
                 ]

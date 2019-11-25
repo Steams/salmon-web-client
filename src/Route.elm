@@ -10,6 +10,7 @@ type Route
     | Home
     | Login
     | Signup
+    | Verification String
 
 
 parser : Parser (Route -> a) a
@@ -18,6 +19,7 @@ parser =
         [ Parser.map Home top
         , Parser.map Login (s "login")
         , Parser.map Signup (s "signup")
+        , Parser.map Verification (s "verification" </> string)
         ]
 
 
@@ -39,8 +41,12 @@ toUrl route =
 
                 Login ->
                     [ "login" ]
+
                 Signup ->
                     [ "signup" ]
+
+                Verification token ->
+                    [ "signup", token ]
     in
     "/" ++ String.join "/" pathSegments
 
