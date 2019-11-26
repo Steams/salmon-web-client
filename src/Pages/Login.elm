@@ -8,7 +8,6 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
-import Hls exposing (initialize)
 import Html as Html
 import Html.Attributes as HtmlAttribute
 import Json.Encode as E

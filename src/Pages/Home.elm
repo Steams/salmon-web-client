@@ -8,7 +8,7 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
-import Hls exposing (initialize, pause)
+import Ports as Ports
 import Html as Html
 import Html.Attributes as HtmlAttribute
 import Json.Encode as E
@@ -79,7 +79,7 @@ update msg model =
             )
 
         LoadSong song ->
-            ( { model | active = Just song }, Hls.initialize (E.string song.playlist) )
+            ( { model | active = Just song }, Ports.initialize (E.string song.playlist) )
 
         Pause ->
             let
@@ -89,7 +89,7 @@ update msg model =
                 val =
                     "Hello"
             in
-            ( model, Hls.pause (E.string val) )
+            ( model, Ports.pause (E.string val) )
 
         Play ->
             let
@@ -99,7 +99,7 @@ update msg model =
                 val =
                     "Hello"
             in
-            ( model, Hls.play (E.string val) )
+            ( model, Ports.play (E.string val) )
 
         _ ->
             ( model
@@ -202,7 +202,7 @@ render model =
         Loading ->
             text "Loading Media Library..."
 
-        Success songs ->
+        Success (l::ls as songs) ->
             -- HtmlAttribute.attribute "controls" ""
             let
                 ( title, album ) =
@@ -231,6 +231,9 @@ render model =
                     , song_table songs
                     ]
                 ]
+
+        Success [] ->
+            Element.row [] [text "Get started by setting up salmon media server on your library machine"]
 
         Failure error ->
             let

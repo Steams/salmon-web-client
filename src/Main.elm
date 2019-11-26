@@ -18,7 +18,7 @@ import Route exposing (Route)
 import Session exposing (Session)
 import Task
 import Url exposing (Url)
-import Hls as Hls
+import Ports as Ports
 
 
 type Page
@@ -159,7 +159,7 @@ update msg model =
             in
             ( { model | session = new_session }
             , Cmd.batch
-                [ Hls.storeSession (Encode.string id)
+                [ Ports.storeSession (Encode.string id)
                 , Nav.pushUrl session.navKey (Route.toUrl Route.Home)
                 ]
             )
