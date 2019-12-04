@@ -13,12 +13,12 @@ import Pages.Home as Home
 import Pages.Login as Login
 import Pages.NotFound as NotFound
 import Pages.Signup as Signup
+import Ports as Ports
 import RemoteData as RemoteData exposing (RemoteData(..), WebData)
 import Route exposing (Route)
 import Session exposing (Session)
 import Task
 import Url exposing (Url)
-import Ports as Ports
 
 
 type Page
@@ -146,21 +146,20 @@ update msg model =
             in
             ( model, Cmd.none )
 
-        ( LoginMsg (Login.LoginResponse (Success id)), _ ) ->
+        ( LoginMsg (Login.LoginResponse (Success ())), _ ) ->
             let
-                _ =
-                    Debug.log "ID RESPONSE : " id
-
+                -- _ =
+                -- Debug.log "ID RESPONSE : " id
                 session =
                     model.session
 
                 new_session =
-                    { session | sessionToken = id }
+                    { session | sessionToken = "csrf token should go here, also dont store this in localstorage" }
             in
             ( { model | session = new_session }
             , Cmd.batch
-                [ Ports.storeSession (Encode.string id)
-                , Nav.pushUrl session.navKey (Route.toUrl Route.Home)
+                [ -- Ports.storeSession (Encode.string "csrf token should go here, also dont store this in localstorage") ,
+                  Nav.pushUrl session.navKey (Route.toUrl Route.Home)
                 ]
             )
 

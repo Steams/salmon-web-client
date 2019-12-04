@@ -33,7 +33,8 @@ type Msg
     | UsernameInput String
     | PasswordInput String
     | SubmitLogin
-    | LoginResponse (WebData String)
+    -- | LoginResponse (WebData String)
+    | LoginResponse (WebData ())
     | Signup
 
 

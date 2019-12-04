@@ -118,23 +118,6 @@ link_item =
     , mouseOver [ Font.color black ]
     ]
 
-
-home_page =
-    [ Font.size 16
-    , spacing 20
-    , Font.color grey
-    ]
-
-
-submit_button =
-    [ px 36 |> height
-    , px 90 |> width
-    , Background.color primary_green
-    , Border.rounded 3
-    , Font.color white
-    ]
-
-
 nav_bar =
     [ width fill
     , Background.color primary_green

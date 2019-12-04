@@ -56,7 +56,7 @@ song_list_decoder =
     Decode.list song_decoder
 
 
-login : (WebData String -> msg) -> String -> String -> Cmd msg
+login : (WebData () -> msg) -> String -> String -> Cmd msg
 login handler username password =
     Http.request
         { method = "POST"
@@ -68,7 +68,7 @@ login handler username password =
                     [ ( "username", Encode.string username )
                     , ( "password", Encode.string password )
                     ]
-        , expect = Http.expectJson (RemoteData.fromResult >> handler) string
+        , expect = Http.expectWhatever (RemoteData.fromResult >> handler)
         , timeout = Nothing
         , tracker = Nothing
         }
