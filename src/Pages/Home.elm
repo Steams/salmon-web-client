@@ -67,7 +67,7 @@ init session =
 
 
 load_data session =
-    get_data session.sessionToken HandleData
+    get_data session.csrfToken HandleData
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

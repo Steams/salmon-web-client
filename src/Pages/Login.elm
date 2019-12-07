@@ -37,7 +37,6 @@ type Msg
     | LoginResponse (WebData ())
     | Signup
 
-
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { username = "", password = "" }, Cmd.none )
