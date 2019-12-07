@@ -13,12 +13,12 @@ import Pages.Home as Home
 import Pages.Login as Login
 import Pages.NotFound as NotFound
 import Pages.Signup as Signup
+import Ports as Ports
 import RemoteData as RemoteData exposing (RemoteData(..), WebData)
 import Route exposing (Route)
 import Session exposing (Session)
 import Task
 import Url exposing (Url)
-import Ports as Ports
 
 
 type Page
@@ -33,20 +33,19 @@ type alias Model =
     { session : Session, page : Page }
 
 
-init : Session.Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url navKey =
+init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init _ url navKey =
     let
         model =
-            Model (Session.init flags navKey) Redirect
+            Model (Session.init navKey) Redirect
 
         route =
-            if model.session.sessionToken == "" then
-                Just Route.Login
-                -- Just Route.Home
-                -- Route.fromUrl url
-
-            else
-                Route.fromUrl url
+            -- if model.session.sessionToken == "" then
+            --     Just Route.Login
+            --     -- Just Route.Home
+            --     -- Route.fromUrl url
+            -- else
+            Route.fromUrl url
     in
     goto route model
 
@@ -133,7 +132,7 @@ update msg model =
                     model.session
 
                 new_session =
-                    { session | sessionToken = token }
+                    { session | csrfToken = token }
             in
             ( { model | session = new_session }
             , Nav.pushUrl session.navKey (Route.toUrl Route.Home)
@@ -146,21 +145,19 @@ update msg model =
             in
             ( model, Cmd.none )
 
-        ( LoginMsg (Login.LoginResponse (Success id)), _ ) ->
+        ( LoginMsg (Login.LoginResponse (Success ())), _ ) ->
             let
-                _ =
-                    Debug.log "ID RESPONSE : " id
-
+                -- _ =
+                -- Debug.log "ID RESPONSE : " id
                 session =
                     model.session
 
                 new_session =
-                    { session | sessionToken = id }
+                    { session | csrfToken = "csrf token should go here, also dont store this in localstorage" }
             in
             ( { model | session = new_session }
             , Cmd.batch
-                [ Ports.storeSession (Encode.string id)
-                , Nav.pushUrl session.navKey (Route.toUrl Route.Home)
+                [ Nav.pushUrl session.navKey (Route.toUrl Route.Home)
                 ]
             )
 

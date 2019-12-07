@@ -1,16 +1,13 @@
-module Session exposing (Flags, Session, init)
+module Session exposing (Session, init, Flags)
 
 import Browser.Navigation as Nav
 
+type alias Flags = ()
 
-init : Flags -> Nav.Key -> Session
-init { csrfToken, sessionToken } navKey =
-    { csrfToken = csrfToken, sessionToken = sessionToken, navKey = navKey }
-
-
-type alias Flags =
-    { csrfToken : String, sessionToken : String }
+init : Nav.Key -> Session
+init navKey =
+    { csrfToken = "", navKey = navKey }
 
 
 type alias Session =
-    { csrfToken : String, sessionToken : String, navKey : Nav.Key }
+    { csrfToken : String, navKey : Nav.Key }

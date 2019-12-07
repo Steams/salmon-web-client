@@ -19,18 +19,8 @@
   <body>
     <script>
 
-    var sessionToken = localStorage.getItem('sessionToken') || "";
 
-    var flags = { csrfToken : "csrfToken", sessionToken : sessionToken }
-
-    var app = Elm.Main.init({
-        flags: flags
-    });
-
-     app.ports.storeSession.subscribe(function(token) {
-        localStorage.setItem('sessionToken', token);
-        console.log("Saved state: ", token);
-     });
+    var app = Elm.Main.init();
 
      app.ports.play.subscribe(function() {
 
