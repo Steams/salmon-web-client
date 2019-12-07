@@ -1,4 +1,4 @@
-module Api exposing (Song, get_data,login,signup,verify)
+module Api exposing (Song, get_data, login, signup, verify,get_csrf)
 
 import Http as Http
 import Json.Decode as Decode exposing (Decoder, field, int, string)
@@ -56,7 +56,7 @@ song_list_decoder =
     Decode.list song_decoder
 
 
-login : (WebData () -> msg) -> String -> String -> Cmd msg
+login : (WebData String -> msg) -> String -> String -> Cmd msg
 login handler username password =
     Http.request
         { method = "POST"
@@ -68,10 +68,11 @@ login handler username password =
                     [ ( "username", Encode.string username )
                     , ( "password", Encode.string password )
                     ]
-        , expect = Http.expectWhatever (RemoteData.fromResult >> handler)
+        , expect = Http.expectJson (RemoteData.fromResult >> handler) string
         , timeout = Nothing
         , tracker = Nothing
         }
+
 
 signup : (WebData String -> msg) -> String -> String -> String -> Cmd msg
 signup handler username password email =
@@ -91,8 +92,9 @@ signup handler username password email =
         , tracker = Nothing
         }
 
+
 verify : (WebData String -> msg) -> String -> Cmd msg
-verify handler token  =
+verify handler token =
     Http.request
         { method = "POST"
         , headers = []
@@ -110,11 +112,25 @@ get_data credentials handler =
     get credentials "http://localhost:8080/media" handler song_list_decoder
 
 
+get_csrf : (WebData String -> msg) -> Cmd msg
+get_csrf handler =
+    Http.request
+        { method = "GET"
+        , headers = []
+        , url = "http://localhost:8080/csrf"
+        , body = Http.emptyBody
+        , expect = Http.expectJson (RemoteData.fromResult >> handler) string
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
 get : Credentials -> String -> (WebData a -> msg) -> Decoder a -> Cmd msg
 get credentials endpoint handler decoder =
     Http.request
         { method = "GET"
         , headers = [ Http.header "Authorization" credentials ]
+
         -- , headers = [ Http.header "Authorization" "1" ]
         , url = endpoint
         , body = Http.emptyBody
