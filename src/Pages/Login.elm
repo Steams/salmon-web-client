@@ -33,8 +33,7 @@ type Msg
     | UsernameInput String
     | PasswordInput String
     | SubmitLogin
-    -- | LoginResponse (WebData String)
-    | LoginResponse (WebData ())
+    | LoginResponse (WebData String)
     | Signup
 
 init : Session -> ( Model, Cmd Msg )

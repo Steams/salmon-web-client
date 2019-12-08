@@ -57,6 +57,7 @@ type Msg
     | LoginMsg Login.Msg
     | SignupMsg Signup.Msg
     | VerificationResponse (WebData String)
+    | CsrfResponse Route (WebData String)
     | NoOp
 
 
@@ -70,13 +71,16 @@ goto maybeRoute model =
             ( model, Route.replaceUrl model.session.navKey Route.Home )
 
         Just Route.Home ->
-            let
-                ( home, home_msg ) =
-                    Home.init model.session
-            in
-            ( { model | page = Home home }
-            , Cmd.map HomeMsg home_msg
-            )
+            case model.session.csrfToken of
+                "" ->
+                    ( model, get_csrf Route.Home )
+
+                _ ->
+                    let
+                        ( home, home_msg ) =
+                            Home.init model.session
+                    in
+                    ( { model | page = Home home }, Cmd.map HomeMsg home_msg )
 
         Just Route.Login ->
             let
@@ -109,6 +113,11 @@ goto maybeRoute model =
             )
 
 
+get_csrf : Route -> Cmd Msg
+get_csrf destination =
+    Api.get_csrf <| CsrfResponse destination
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model.page ) of
@@ -122,6 +131,19 @@ update msg model =
 
         ( ChangeUrl url, _ ) ->
             goto (Route.fromUrl url) model
+
+        ( CsrfResponse route (Success token), _ ) ->
+            let
+                session =
+                    model.session
+
+                new_session =
+                    { session | csrfToken = token }
+            in
+            goto (Just route) { model | session = new_session }
+
+        ( CsrfResponse route res, _ ) ->
+            goto (Just Route.Login) model
 
         ( VerificationResponse (Success token), _ ) ->
             let
@@ -145,15 +167,13 @@ update msg model =
             in
             ( model, Cmd.none )
 
-        ( LoginMsg (Login.LoginResponse (Success ())), _ ) ->
+        ( LoginMsg (Login.LoginResponse (Success csrf)), _ ) ->
             let
-                -- _ =
-                -- Debug.log "ID RESPONSE : " id
                 session =
                     model.session
 
                 new_session =
-                    { session | csrfToken = "csrf token should go here, also dont store this in localstorage" }
+                    { session | csrfToken = csrf }
             in
             ( { model | session = new_session }
             , Cmd.batch
