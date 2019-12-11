@@ -3,4 +3,5 @@ elm-stuff/
 node_modules/
 tests/elm-stuff
 elm.js
+*.txt
 

@@ -14,6 +14,14 @@ blue =
     rgb255 5 100 245
 
 
+background_blue =
+    rgb255 244 251 253
+
+
+dark_blue =
+    rgb255 37 48 67
+
+
 primary_green =
     rgb255 0 209 178
 
@@ -43,7 +51,11 @@ text_grey =
 
 
 text_black =
-    rgb255 105 105 105
+    rgb255 80 80 80
+
+
+light_grey =
+    rgb255 205 205 205
 
 
 grey =
@@ -52,10 +64,6 @@ grey =
 
 green =
     rgb255 120 145 155
-
-
-light_grey =
-    rgba255 0 0 0 0.2
 
 
 red =
@@ -79,8 +87,7 @@ title value options =
         ([ centerX
          , Font.size 35
          , Font.family [ Font.typeface "Roboto" ]
-         , Font.bold
-         , Font.color red
+         , Font.color dark_blue
          ]
             ++ options
         )
@@ -117,6 +124,7 @@ link_item =
     [ Font.color link_blue
     , mouseOver [ Font.color black ]
     ]
+
 
 nav_bar =
     [ width fill

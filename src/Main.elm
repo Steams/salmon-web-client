@@ -38,6 +38,8 @@ init _ url navKey =
     let
         model =
             Model (Session.init navKey) Redirect
+            -- TODO REMOVE BELOW FOR REAL TESTS
+            -- Model { csrfToken = "test", navKey = navKey } Redirect
 
         route =
             -- if model.session.sessionToken == "" then
