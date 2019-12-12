@@ -1,6 +1,7 @@
 module Pages.Home exposing (Model, Msg, init, update, view)
 
 import Api exposing (Song, get_data)
+import Array
 import Browser.Dom as Dom
 import Browser.Navigation exposing (pushUrl)
 import Element exposing (..)
@@ -13,6 +14,7 @@ import Html as Html
 import Html.Attributes as HtmlAttribute
 import Json.Encode as E
 import Layout exposing (TitleAndContent)
+import List.Extra exposing (find, findIndex, getAt)
 import Ports as Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Route
@@ -20,6 +22,7 @@ import Session exposing (Session)
 import Set as Set
 import Styles exposing (edges)
 import Task
+import Tuple
 
 
 
@@ -28,12 +31,11 @@ import Task
 
 type alias Model =
     { data : WebData (List Song)
-    , active : Maybe Song
+    , active : Maybe Int
     , playing : Bool
     , mode : Mode
     , page_height : Int
-
-    -- , current_playlist : Int
+    , current_playlist : Maybe (List Int)
     }
 
 
@@ -48,10 +50,59 @@ type alias Album =
 
 type alias Artist =
     { name : String
-    , songs : List Song
-    , albums : List Album
+    , songs : List Song -- TODO this property is redundant with albums
+    , albums : List Album -- TODO need an album for singles
     , duration : Int
     }
+
+
+
+-- Model will need idea of currently displayed list of songs, and active should be an index so you can next/previous
+-- State
+
+
+type Msg
+    = NoOp
+    | HandleData (WebData (List Song))
+    | LoadSong Song
+    | PlayAlbumSong Album Song
+    | PlayAlbum Album
+    | PlayArtist Artist
+    | Next
+    | Prev
+      -- | LoadSong Song
+    | TogglePlay
+    | Nope String
+    | ChangeMode Mode
+    | SelectAlbum Album
+    | SelectArtist Artist
+    | WindowInfo Dom.Viewport
+
+
+type Mode
+    = Songs
+    | Albums
+    | Artists
+    | ViewAlbum Album
+    | ViewArtist Artist
+
+
+init : Session -> ( Model, Cmd Msg )
+init session =
+    ( { data = Loading
+      , active = Nothing
+      , playing = False
+      , mode = Songs
+      , page_height = 0
+      , current_playlist = Nothing
+      }
+    , Cmd.batch [ get_screen_info, load_data session ]
+    )
+
+
+get_screen_info =
+    Task.perform WindowInfo Dom.getViewport
+
 
 get_albums songs =
     let
@@ -95,48 +146,8 @@ get_artists songs =
 
 
 
-
--- Model will need idea of currently displayed list of songs, and active should be an index so you can next/previous
--- State
-
-
-type Msg
-    = NoOp
-    | HandleData (WebData (List Song))
-    | LoadSong Song
-    | TogglePlay
-    | Nope String
-    | ChangeMode Mode
-    | SelectAlbum Album
-    | SelectArtist Artist
-    | WindowInfo Dom.Viewport
-
-
-type Mode
-    = Songs
-    | Albums
-    | Artists
-    | ViewAlbum Album
-    | ViewArtist Artist
-
-
-init : Session -> ( Model, Cmd Msg )
-init session =
-    ( { data = Loading
-      , active = Nothing
-      , playing = False
-      , mode = Songs
-      , page_height = 0
-      }
-    , Cmd.batch [ get_screen_info, load_data session ]
-    )
-
-
-get_screen_info =
-    Task.perform WindowInfo Dom.getViewport
-
-
-
+-- get_song index songs =
+--     Maybe.withDefault empty_song <| getAt index songs
 -- init : Session -> ( Model, Cmd Msg )
 -- init session =
 --     ( { data =
@@ -190,9 +201,74 @@ format_duration time =
         hours =
             time // 3600
     in
-        case hours of
-            0 -> String.fromInt minutes ++ ":" ++ if seconds > 9 then String.fromInt seconds else "0" ++ String.fromInt seconds
-            _ -> String.fromInt hours ++ " hr " ++ String.fromInt minutes ++ " min"
+    case hours of
+        0 ->
+            String.fromInt minutes
+                ++ ":"
+                ++ (if seconds > 9 then
+                        String.fromInt seconds
+
+                    else
+                        "0" ++ String.fromInt seconds
+                   )
+
+        _ ->
+            String.fromInt hours ++ " hr " ++ String.fromInt minutes ++ " min"
+
+
+is_song_equal : Song -> Song -> Bool
+is_song_equal a b =
+    a.album == b.album && a.title == b.title
+
+
+playlist_contains : List Int -> List Song -> Song -> Bool
+playlist_contains playlist library song =
+    let
+        with_pos =
+            Array.toIndexedList <| Array.fromList library
+
+        songs =
+            List.map Tuple.second <| List.filter (\( x, y ) -> List.member x playlist) with_pos
+
+        result =
+            case find (is_song_equal song) songs of
+                Just _ ->
+                    True
+
+                Nothing ->
+                    False
+    in
+    result
+
+
+song_index playlist library song =
+    let
+        with_pos =
+            Array.toIndexedList <| Array.fromList library
+
+        songs =
+            List.map Tuple.second <| List.filter (\( x, y ) -> List.member x playlist) with_pos
+
+        result =
+            case findIndex (is_song_equal song) songs of
+                Just i ->
+                    i
+
+                Nothing ->
+                    -1
+    in
+    result
+
+
+get_song playlist library index =
+    let
+        with_pos =
+            Array.toIndexedList <| Array.fromList library
+
+        songs =
+            List.map Tuple.second <| List.filter (\( x, y ) -> List.member x playlist) with_pos
+    in
+    getAt index songs
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -204,7 +280,69 @@ update msg model =
             )
 
         LoadSong song ->
-            ( { model | active = Just song, playing = True }, Ports.initialize (E.string song.playlist) )
+            let
+                library =
+                    RemoteData.withDefault [] model.data
+
+                playlist =
+                    case model.current_playlist of
+                        Nothing ->
+                            List.range 0 (List.length library - 1)
+
+                        Just xs ->
+                            case playlist_contains xs library song of
+                                True ->
+                                    xs
+
+                                False ->
+                                    List.range 0 (List.length library - 1)
+
+                index =
+                    song_index playlist library song
+            in
+            ( { model | active = Just index, playing = True, current_playlist = Just playlist }
+            -- TODO change song.playlist to song.url
+            , Ports.initialize (E.string song.playlist)
+            )
+
+        PlayAlbum album ->
+            let
+                library =
+                    RemoteData.withDefault [] model.data
+
+                playlist =
+                    List.map (\x -> Maybe.withDefault -1 (findIndex (is_song_equal x) library)) album.songs
+
+                index =
+                    0
+
+                song =
+                    Maybe.withDefault empty_song <| get_song playlist library index
+            in
+            ( { model | active = Just index, playing = True, current_playlist = Just playlist }
+            , Ports.initialize (E.string song.playlist)
+            )
+
+        PlayArtist artist ->
+            let
+                library =
+                    RemoteData.withDefault [] model.data
+
+                -- TODO need to sort album songs in track order
+                songs = List.concat <| List.map (\x -> x.songs) artist.albums
+
+                playlist =
+                    List.map (\x -> Maybe.withDefault -1 (findIndex (is_song_equal x) library)) songs
+
+                index =
+                    0
+
+                song =
+                    Maybe.withDefault empty_song <| get_song playlist library index
+            in
+            ( { model | active = Just index, playing = True, current_playlist = Just playlist }
+            , Ports.initialize (E.string song.playlist)
+            )
 
         TogglePlay ->
             let
@@ -217,6 +355,54 @@ update msg model =
                             Ports.pause (E.string "")
             in
             ( { model | playing = not model.playing }, action )
+
+        Next ->
+            case ( model.active, model.current_playlist ) of
+                ( Just i, Just playlist ) ->
+                    let
+                        library =
+                            RemoteData.withDefault [] model.data
+
+                        active =
+                            if i + 1 < List.length playlist then
+                                i + 1
+
+                            else
+                                0
+
+                        song =
+                            Maybe.withDefault empty_song <| get_song playlist library active
+                    in
+                    ( { model | active = Just active }
+                    , Ports.initialize (E.string song.playlist)
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        Prev ->
+            case ( model.active, model.current_playlist ) of
+                ( Just i, Just playlist ) ->
+                    let
+                        library =
+                            RemoteData.withDefault [] model.data
+
+                        active =
+                            if i - 1 >= 0 then
+                                i - 1
+
+                            else
+                                0
+
+                        song =
+                            Maybe.withDefault empty_song <| get_song playlist library active
+                    in
+                    ( { model | active = Just active }
+                    , Ports.initialize (E.string song.playlist)
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         ChangeMode mode ->
             ( { model | mode = mode }
@@ -299,9 +485,9 @@ controls song =
         [ now_playing song
         , Element.row [ centerX, spacing 30, Font.bold, Font.color Styles.text_grey ]
             [ icon "shuffle" NoOp
-            , icon "prev" NoOp
+            , icon "prev" Prev
             , icon "play" TogglePlay
-            , icon "next" NoOp
+            , icon "next" Next
             , icon "repeat" NoOp
             ]
         , Element.row [ alignRight, spacing 30 ]
@@ -588,9 +774,9 @@ artist_details_header artist =
                 ]
             , Element.row [ spacing 50 ]
                 [ Element.row [ spacing 10 ] [ icon "music" NoOp, text <| (String.fromInt <| List.length artist.songs) ++ " tracks" ]
-                , Element.row [ spacing 10 ] [ icon "duration" NoOp, text <| format_duration artist.duration  ]
+                , Element.row [ spacing 10 ] [ icon "duration" NoOp, text <| format_duration artist.duration ]
                 ]
-            , button "PLAY" NoOp
+            , button "PLAY" (PlayArtist artist)
             ]
         ]
 
@@ -717,7 +903,7 @@ album_details_header album =
                 [ Element.row [ spacing 10 ] [ icon "music" NoOp, text <| (String.fromInt <| List.length album.songs) ++ " tracks" ]
                 , Element.row [ spacing 10 ] [ icon "duration" NoOp, text <| format_duration album.duration ]
                 ]
-            , button "PLAY" NoOp
+            , button "PLAY" (PlayAlbum album)
             ]
         ]
 
@@ -832,7 +1018,11 @@ song_list_page page_height songs =
         ]
 
 
-main_panel model songs =
+main_panel model =
+    let
+        songs =
+            RemoteData.withDefault [] model.data
+    in
     case model.mode of
         Songs ->
             Element.column
@@ -904,14 +1094,24 @@ render model =
             Element.row [] [ text "Get started by setting up salmon media server on your library machine" ]
 
         Success songs ->
+            let
+                library =
+                    RemoteData.withDefault [] model.data
+
+                playlist =
+                    Maybe.withDefault [] model.current_playlist
+
+                active =
+                    Maybe.withDefault -1 model.active
+            in
             Element.row
                 [ width fill
                 , height fill
-                , inFront <| player model.active
+                , inFront <| player <| get_song playlist library active
                 , Font.family [ Font.typeface "Open Sans" ]
                 ]
                 [ side_panel
-                , main_panel model songs
+                , main_panel model
                 ]
 
         Failure error ->
