@@ -37,6 +37,22 @@ type alias Model =
     }
 
 
+type alias Album =
+    { name : String
+    , songs : List Song
+    , duration : Int
+    , artist : String
+    , art : String
+    }
+
+
+type alias Artist =
+    { name : String
+    , songs : List Song
+    , albums : List Album
+    , duration : Int
+    }
+
 get_albums songs =
     let
         album_names =
@@ -77,22 +93,6 @@ get_artists songs =
     in
     List.map name_to_artist artist_names
 
-
-type alias Album =
-    { name : String
-    , songs : List Song
-    , duration : Int
-    , artist : String
-    , art : String
-    }
-
-
-type alias Artist =
-    { name : String
-    , songs : List Song
-    , albums : List Album
-    , duration : Int
-    }
 
 
 
@@ -177,6 +177,22 @@ empty_song =
 
 load_data session =
     get_data session.csrfToken HandleData
+
+
+format_duration time =
+    let
+        seconds =
+            modBy 60 time
+
+        minutes =
+            modBy 60 (time // 60)
+
+        hours =
+            time // 3600
+    in
+        case hours of
+            0 -> String.fromInt minutes ++ ":" ++ if seconds > 9 then String.fromInt seconds else "0" ++ String.fromInt seconds
+            _ -> String.fromInt hours ++ " hr " ++ String.fromInt minutes ++ " min"
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -469,7 +485,7 @@ artist_row artist =
         , artist_row_item artist.name
         , artist_row_item "album count"
         , artist_row_item (String.fromInt <| List.length artist.songs)
-        , artist_row_item (String.fromInt artist.duration)
+        , artist_row_item <| format_duration artist.duration
         ]
 
 
@@ -521,7 +537,7 @@ artist_album_info album =
             , Border.shadow { offset = ( -3, 3 ), size = 0, blur = 8, color = Styles.light_grey }
             ]
             { src = album.art, description = "" }
-        , text <| "length : " ++ String.fromInt album.duration
+        , text <| "length : " ++ format_duration album.duration
         , text "release date : 12/2/2019"
         ]
 
@@ -572,7 +588,7 @@ artist_details_header artist =
                 ]
             , Element.row [ spacing 50 ]
                 [ Element.row [ spacing 10 ] [ icon "music" NoOp, text <| (String.fromInt <| List.length artist.songs) ++ " tracks" ]
-                , Element.row [ spacing 10 ] [ icon "duration" NoOp, text <| "1 hr 42 min" ]
+                , Element.row [ spacing 10 ] [ icon "duration" NoOp, text <| format_duration artist.duration  ]
                 ]
             , button "PLAY" NoOp
             ]
@@ -673,7 +689,7 @@ album_row album =
         , album_row_item album.name
         , album_row_item album.artist
         , album_row_item (String.fromInt <| List.length album.songs)
-        , album_row_item (String.fromInt album.duration)
+        , album_row_item (format_duration album.duration)
         ]
 
 
@@ -699,7 +715,7 @@ album_details_header album =
                 ]
             , Element.row [ spacing 50 ]
                 [ Element.row [ spacing 10 ] [ icon "music" NoOp, text <| (String.fromInt <| List.length album.songs) ++ " tracks" ]
-                , Element.row [ spacing 10 ] [ icon "duration" NoOp, text <| "1 hr 42 min" ]
+                , Element.row [ spacing 10 ] [ icon "duration" NoOp, text <| format_duration album.duration ]
                 ]
             , button "PLAY" NoOp
             ]
@@ -791,7 +807,7 @@ songs_row song =
         , songs_row_item song.artist
         , songs_row_item song.album
         , songs_row_item "5 Days Ago"
-        , songs_row_item (String.fromInt song.duration)
+        , songs_row_item (format_duration song.duration)
         ]
 
 
