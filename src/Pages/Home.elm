@@ -32,7 +32,50 @@ type alias Model =
     , playing : Bool
     , mode : Mode
     , page_height : Int
+
+    -- , current_playlist : Int
     }
+
+
+get_albums songs =
+    let
+        album_names =
+            Set.toList <| Set.fromList <| List.map .album songs
+
+        name_to_album name =
+            let
+                album_songs =
+                    List.filter ((==) name << .album) songs
+            in
+            { name = name
+            , songs = album_songs
+            , duration = List.foldl (+) 0 (List.map .duration album_songs)
+            , artist = List.foldl (\a b -> a.artist) "" album_songs
+            , art = List.foldl (\a b -> a.art) "" album_songs
+            }
+    in
+    List.map name_to_album album_names
+
+
+get_artists songs =
+    let
+        artist_names =
+            Set.toList <| Set.fromList <| List.map .artist songs
+
+        name_to_artist name =
+            let
+                artist_songs =
+                    List.filter ((==) name << .artist) songs
+            in
+            { name = name
+            , songs = artist_songs
+            , duration = List.foldl (+) 0 (List.map .duration artist_songs)
+            , albums = List.filter ((==) name << .artist) (get_albums songs)
+
+            -- , art = List.foldl (\a b -> a.art) "" artist_songs
+            }
+    in
+    List.map name_to_artist artist_names
 
 
 type alias Album =
@@ -440,13 +483,83 @@ artist_table artists =
         List.map artist_row artists
 
 
+artist_album_songs album =
+    let
+        row song =
+            Element.row
+                [ width fill
+                , Font.size 15
+                , Font.color Styles.text_black
+                , pointer
+                , height (px 75)
+                , spacing 20
+                , onClick <| LoadSong song
+                ]
+                [ text "01"
+                , text song.title
+                , Element.el [ width (fillPortion 1), Border.width 1, Border.dashed, Border.color Styles.light_grey ] <| text ""
+
+                -- , Element.el [alignRight] <| text (String.fromInt song.duration)
+                , Element.el [ alignRight ] <| text "4:05"
+                ]
+    in
+    Element.column [ width (fill |> maximum 1200) ]
+        [ Styles.title album.name [ alignLeft, width fill ]
+        , Element.column [ alignTop, height (shrink |> minimum 300), width fill ] <| List.map row album.songs
+        ]
+
+
+artist_album_info album =
+    Element.column
+        [ width (px 250)
+        , alignTop
+        , spacing 15
+        ]
+        [ Element.image
+            [ width (px 250)
+            , height (px 250)
+            , Border.shadow { offset = ( -3, 3 ), size = 0, blur = 8, color = Styles.light_grey }
+            ]
+            { src = album.art, description = "" }
+        , text <| "length : " ++ String.fromInt album.duration
+        , text "release date : 12/2/2019"
+        ]
+
+
+artist_album_row album =
+    Element.row
+        [ width fill
+        , Font.size 15
+        , Font.color Styles.text_black
+        , pointer
+        , Border.color Styles.light_grey
+        , spacing 50
+        ]
+        [ artist_album_info album
+        , artist_album_songs album
+        ]
+
+
+artist_albums_table albums =
+    Element.column [ width fill, spacing 30, width (fill |> maximum 1400), centerX ] <|
+        Element.el
+            [ alignLeft
+            , Font.color Styles.text_grey
+            , Font.size 15
+            , Font.family [ Font.typeface "Roboto" ]
+            ]
+            (text "ALBUMS")
+            :: List.map artist_album_row albums
+
+
 artist_details_header artist =
-    Element.row [ height (px 400), width fill, spacing 40 ]
+    Element.row [ height (px 400), width (fill |> maximum 1400), spacing 40, centerX ]
         [ Element.el [ height (px 300) ] <|
             Element.image
                 [ centerY
                 , width (px 300)
                 , height (px 300)
+                , Border.rounded 200
                 , Border.shadow { offset = ( -3, 3 ), size = 0, blur = 8, color = Styles.light_grey }
                 ]
                 { src = "", description = "" }
@@ -474,13 +587,11 @@ artist_details_page page_height artist =
     Element.column
         [ paddingEach { edges | top = 40, left = 50, right = 50 }
         , width fill
-        , height fill
         , height (px available_height)
         , scrollbarY
         ]
         [ artist_details_header artist
-        , songs_table_header
-        , songs_table artist.songs
+        , artist_albums_table artist.albums
         ]
 
 
@@ -706,46 +817,6 @@ song_list_page page_height songs =
 
 
 main_panel model songs =
-    let
-        album_names =
-            Set.toList <| Set.fromList <| List.map .album songs
-
-        artist_names =
-            Set.toList <| Set.fromList <| List.map .artist songs
-
-        albums =
-            List.map
-                (\x ->
-                    let
-                        album_songs =
-                            List.filter ((==) x << .album) songs
-                    in
-                    { name = x
-                    , songs = album_songs
-                    , duration = List.foldl (+) 0 (List.map .duration album_songs)
-                    , artist = List.foldl (\a b -> a.artist) "" album_songs
-                    , art = List.foldl (\a b -> a.art) "" album_songs
-                    }
-                )
-                album_names
-
-        artists =
-            List.map
-                (\x ->
-                    let
-                        artist_songs =
-                            List.filter ((==) x << .artist) songs
-                    in
-                    { name = x
-                    , songs = artist_songs
-                    , duration = List.foldl (+) 0 (List.map .duration artist_songs)
-                    , albums = List.filter ((==) x << .artist) albums
-
-                    -- , art = List.foldl (\a b -> a.art) "" artist_songs
-                    }
-                )
-                artist_names
-    in
     case model.mode of
         Songs ->
             Element.column
@@ -768,7 +839,7 @@ main_panel model songs =
                 , Background.color Styles.white
                 ]
                 [ topbar model
-                , album_list_page model.page_height albums
+                , album_list_page model.page_height <| get_albums songs
                 ]
 
         ViewAlbum album ->
@@ -792,7 +863,7 @@ main_panel model songs =
                 , Background.color Styles.white
                 ]
                 [ topbar model
-                , artist_list_page model.page_height artists
+                , artist_list_page model.page_height <| get_artists songs
                 ]
 
         ViewArtist artist ->
