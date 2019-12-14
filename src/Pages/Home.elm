@@ -1,8 +1,9 @@
-module Pages.Home exposing (Model, Msg, init, update, view)
+module Pages.Home exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api exposing (Song, get_data)
 import Array
 import Browser.Dom as Dom
+import Browser.Events as BrowserEvents
 import Browser.Navigation exposing (pushUrl)
 import Element exposing (..)
 import Element.Background as Background
@@ -12,6 +13,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html as Html
 import Html.Attributes as HtmlAttribute
+import Html.Events.Extra.Mouse as Mouse
 import Json.Encode as E
 import Layout exposing (TitleAndContent)
 import List.Extra exposing (find, findIndex, getAt)
@@ -35,7 +37,9 @@ type alias Model =
     , playing : Bool
     , mode : Mode
     , page_height : Int
+    , page_width : Int
     , current_playlist : Maybe (List Int)
+    , seek_pos : Float --this is a percentage of song duration
     }
 
 
@@ -77,6 +81,9 @@ type Msg
     | SelectAlbum Album
     | SelectArtist Artist
     | WindowInfo Dom.Viewport
+    | Seek ( Float, Float )
+    | Resize Int Int
+    | PlaybackEnded Bool
 
 
 type Mode
@@ -94,6 +101,8 @@ init session =
       , playing = False
       , mode = Songs
       , page_height = 0
+      , page_width = 0
+      , seek_pos = 0
       , current_playlist = Nothing
       }
     , Cmd.batch [ get_screen_info, load_data session ]
@@ -112,7 +121,7 @@ get_albums songs =
         name_to_album name =
             let
                 album_songs =
-                    List.filter ((==) name << .album) songs
+                    List.sortBy .number <| List.filter ((==) name << .album) songs
             in
             { name = name
             , songs = album_songs
@@ -120,6 +129,9 @@ get_albums songs =
             , artist = List.foldl (\a b -> a.artist) "" album_songs
             , art = List.foldl (\a b -> a.art) "" album_songs
             }
+
+        _ =
+            Debug.log "get albums" (List.map name_to_album album_names)
     in
     List.map name_to_album album_names
 
@@ -146,8 +158,6 @@ get_artists songs =
 
 
 
--- get_song index songs =
---     Maybe.withDefault empty_song <| getAt index songs
 -- init : Session -> ( Model, Cmd Msg )
 -- init session =
 --     ( { data =
@@ -183,7 +193,7 @@ get_artists songs =
 
 
 empty_song =
-    Song "" "" "" 0 "" ""
+    Song "" "" "" -1 -1 "" ""
 
 
 load_data session =
@@ -262,13 +272,10 @@ song_index playlist library song =
 
 get_song playlist library index =
     let
-        with_pos =
-            Array.toIndexedList <| Array.fromList library
-
-        songs =
-            List.map Tuple.second <| List.filter (\( x, y ) -> List.member x playlist) with_pos
+        library_index =
+            Maybe.withDefault -1 <| getAt index playlist
     in
-    getAt index songs
+    getAt library_index library
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -301,7 +308,7 @@ update msg model =
                     song_index playlist library song
             in
             ( { model | active = Just index, playing = True, current_playlist = Just playlist }
-            -- TODO change song.playlist to song.url
+              -- TODO change song.playlist to song.url
             , Ports.initialize (E.string song.playlist)
             )
 
@@ -329,7 +336,8 @@ update msg model =
                     RemoteData.withDefault [] model.data
 
                 -- TODO need to sort album songs in track order
-                songs = List.concat <| List.map (\x -> x.songs) artist.albums
+                songs =
+                    List.concat <| List.map (\x -> x.songs) artist.albums
 
                 playlist =
                     List.map (\x -> Maybe.withDefault -1 (findIndex (is_song_equal x) library)) songs
@@ -404,6 +412,23 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        Seek ( x, y ) ->
+            let
+                seek_pos =
+                    x / toFloat model.page_width
+            in
+            ( { model | seek_pos = seek_pos }
+            , Ports.seek (E.float seek_pos)
+            )
+
+        PlaybackEnded bool ->
+            let
+                _ = Debug.log "PLayback ended"
+            in
+            ( model
+            , Cmd.none
+            )
+
         ChangeMode mode ->
             ( { model | mode = mode }
             , Cmd.none
@@ -424,7 +449,16 @@ update msg model =
                 _ =
                     Debug.log "" info
             in
-            ( { model | page_height = round info.viewport.height }
+            ( { model | page_height = round info.viewport.height, page_width = round info.viewport.width }
+            , Cmd.none
+            )
+
+        Resize w h ->
+            let
+                _ =
+                    Debug.log "size " h
+            in
+            ( { model | page_height = h, page_width = w }
             , Cmd.none
             )
 
@@ -438,13 +472,20 @@ update msg model =
 -- View
 
 
+logo =
+    Element.el [ height (px 100), width fill, Font.size 15, Font.color Styles.white ] <| Element.el [ centerY, centerX ] <| text "LOGO"
+
+
 side_panel =
     Element.column
         [ height fill
         , width (px 300)
         , Background.color Styles.dark_blue
         ]
-        []
+        [ logo
+        , Element.el [ width fill, height (px 50), Font.color Styles.white ] <| text "Home"
+        , Element.el [ width fill, height (px 50), Font.color Styles.white ] <| text "Settings"
+        ]
 
 
 now_playing song =
@@ -498,17 +539,44 @@ controls song =
         ]
 
 
-seek_bar =
-    Element.row [] []
+seek_bar page_width duration seek_pos =
+    let
+        seek_location =
+            round (toFloat page_width * seek_pos)
+    in
+    Element.row
+        [ width fill
+        , height (px 4)
+        , Background.color Styles.light_grey
+        , pointer
+        , Element.htmlAttribute <| Mouse.onClick (\event -> Seek event.offsetPos)
+        ]
+        [ Element.el
+            [ height fill
+            , width (px seek_location)
+            , Background.color Styles.link_blue
+            ]
+          <|
+            Element.none
+        ]
 
 
-player song =
+player page_width seek_pos song =
+    let
+        seek =
+            case song of
+                Just s ->
+                    seek_bar page_width s.duration seek_pos
+
+                Nothing ->
+                    Element.none
+    in
     Element.column
-        [ height (px 100)
+        [ height (px 105)
         , width fill
         , alignBottom
         ]
-        [ seek_bar
+        [ seek
         , controls song
         , html <| Html.audio [ HtmlAttribute.attribute "id" "hls-audio" ] []
         ]
@@ -883,6 +951,55 @@ album_table albums =
     Element.column [ width fill, Border.widthEach { edges | top = 1 }, Border.color Styles.light_grey ] <| List.map album_row albums
 
 
+album_songs_row song =
+    Element.row
+        [ width fill
+        , onClick <| LoadSong song
+        , Font.size 15
+        , Font.color Styles.text_black
+        , pointer
+        , Border.widthEach { edges | bottom = 1 }
+        , Border.color Styles.light_grey
+        , height (px 40)
+        ]
+        [ songs_row_item <| String.fromInt song.number
+        , songs_row_item song.title
+        , songs_row_item song.artist
+        , songs_row_item song.album
+        , songs_row_item "5 Days Ago"
+        , songs_row_item <| format_duration song.duration
+        ]
+
+
+album_songs_table songs =
+    Element.column [ width fill, spacing 20 ] <| List.map songs_row songs
+
+
+album_songs_table_header =
+    let
+        header x =
+            el
+                [ centerX
+                , Font.size 13
+                , Font.family [ Font.typeface "Roboto" ]
+                , Font.color Styles.light_grey
+                , Font.bold
+                , width <| fillPortion 1
+                , Font.alignLeft
+                ]
+            <|
+                text x
+    in
+    Element.row [ width fill, height (px 60) ]
+        [ header ""
+        , header "TRACK"
+        , header "ARTIST"
+        , header "ALBUM"
+        , header "ADDED"
+        , header "TIME"
+        ]
+
+
 album_details_header album =
     Element.row [ height (px 400), width fill, spacing 40 ]
         [ Element.el [ height (px 300) ] <|
@@ -921,8 +1038,8 @@ album_details_page page_height album =
         , scrollbarY
         ]
         [ album_details_header album
-        , songs_table_header
-        , songs_table album.songs
+        , album_songs_table_header
+        , album_songs_table album.songs
         ]
 
 
@@ -1107,11 +1224,11 @@ render model =
             Element.row
                 [ width fill
                 , height fill
-                , inFront <| player <| get_song playlist library active
+                , inFront <| player model.page_width model.seek_pos <| get_song playlist library active
                 , Font.family [ Font.typeface "Open Sans" ]
                 ]
-                [ side_panel
-                , main_panel model
+                [ -- side_panel
+                  main_panel model
                 ]
 
         Failure error ->
@@ -1130,3 +1247,11 @@ view model =
     { title = "Contacts"
     , content = render model
     }
+
+
+subscriptions : model -> Sub Msg
+subscriptions _ =
+    Sub.batch
+        [ BrowserEvents.onResize (\w h -> Resize w h)
+        , Ports.ended PlaybackEnded
+        ]

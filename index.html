@@ -43,6 +43,9 @@
     app.ports.initialize.subscribe(function(url) {
 
         console.log(url)
+
+        setTimeout(function(){app.ports.ended.send(true);},0);
+
         let audio = document.getElementById("hls-audio");
 
         console.log(audio)
@@ -59,8 +62,28 @@
                 console.log("video and hls.js are now bound together !");
                 audio.play();
             });
+
+            hls.on(Hls.Events.MEDIA_ATTACHED,function() {
+                console.log("video and hls.js are now bound together !");
+                audio.play();
+                audio.addEventListener("ended", function(){
+                    console.log("ended")
+                    app.ports.ended.send(true)
+                })
+            });
+
         }
     });
+
+     app.ports.seek.subscribe(function(pos) {
+
+         let audio = document.getElementById("hls-audio");
+         console.log(pos)
+         console.log(audio.duration)
+         audio.currentTime = (audio.duration * pos);
+
+     });
+
 
     </script>
   </body>

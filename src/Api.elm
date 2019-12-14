@@ -37,6 +37,7 @@ type alias Song =
     , artist : String
     , album : String
     , duration : Int
+    , number : Int
     , art : String
     , playlist : String
     }
@@ -44,11 +45,12 @@ type alias Song =
 
 song_decoder : Decoder Song
 song_decoder =
-    Decode.map6 Song
+    Decode.map7 Song
         (field "Title" string)
         (field "Artist" string)
         (field "Album" string)
         (field "Duration" int)
+        (field "Number" int)
         (field "Art" string)
         (field "Playlist" string)
 
