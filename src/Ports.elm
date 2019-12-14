@@ -8,3 +8,4 @@ port pause          : E.Value -> Cmd msg
 port play           : E.Value -> Cmd msg
 port seek           : E.Value -> Cmd msg
 port ended : (Bool -> msg) -> Sub msg
+port playtime : (Float -> msg) -> Sub msg

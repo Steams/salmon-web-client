@@ -84,6 +84,7 @@ type Msg
     | Seek ( Float, Float )
     | Resize Int Int
     | PlaybackEnded Bool
+    | Playtime Float
 
 
 type Mode
@@ -421,13 +422,70 @@ update msg model =
             , Ports.seek (E.float seek_pos)
             )
 
+        Playtime time ->
+            case ( model.active, model.current_playlist ) of
+                ( Just active, Just playlist ) ->
+                    let
+                        library =
+                            RemoteData.withDefault [] model.data
+
+                        song =
+                            get_song playlist library active
+
+                        seek =
+                            case song of
+                                Just s ->
+                                    time / toFloat s.duration
+
+                                Nothing ->
+                                    model.seek_pos
+                    in
+                    ( { model | seek_pos = seek }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
         PlaybackEnded bool ->
-            let
-                _ = Debug.log "PLayback ended"
-            in
-            ( model
-            , Cmd.none
-            )
+            case ( model.active, model.current_playlist ) of
+                ( Just i, Just playlist ) ->
+                    let
+                        _ =
+                            Debug.log "PLayback ended" bool
+
+                        library =
+                            RemoteData.withDefault [] model.data
+
+                        active =
+                            if i + 1 < List.length playlist then
+                                Just (i + 1)
+
+                            else
+                                Nothing
+
+                        song =
+                            case active of
+                                Just n ->
+                                    get_song playlist library n
+
+                                Nothing ->
+                                    Nothing
+
+                        ( cmd, playing ) =
+                            case song of
+                                Just s ->
+                                    ( Ports.initialize (E.string s.playlist), True )
+
+                                Nothing ->
+                                    ( Cmd.none, False )
+                    in
+                    ( { model | active = active, playing = playing }
+                    , cmd
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         ChangeMode mode ->
             ( { model | mode = mode }
@@ -1249,9 +1307,15 @@ view model =
     }
 
 
-subscriptions : model -> Sub Msg
-subscriptions _ =
+subscriptions : Model -> Sub Msg
+subscriptions model =
     Sub.batch
         [ BrowserEvents.onResize (\w h -> Resize w h)
         , Ports.ended PlaybackEnded
+        , if model.playing then Ports.playtime Playtime else Sub.none
         ]
+
+
+
+-- subscribe every second to
+-- From index.html, while playing, every second send current song time
