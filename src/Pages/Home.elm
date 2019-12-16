@@ -29,23 +29,52 @@ import Tuple
 
 
 -- Model
+-- impossible states
+-- cant be playing without an active song, PlayerState = Maybe Active Playing
+-- cant have a active song without a playlist
+-- cant have a seek pos without an active song
+-- active must be a member of current playlist, current playlist cant be empty while active exists
+-- active must be a member of current playlist, current playlist cant be empty while active exists
 
 
 type alias Model =
     { data : WebData (List Song)
-    , active : Maybe Int
-    , playing : Bool
     , mode : Mode
-    , page_height : Int
-    , page_width : Int
-    , current_playlist : Maybe (List Int)
-    , seek_pos : Float --this is a percentage of song duration
+    , page_size : Size
+    , player : Maybe Player
     }
+
+
+type alias PageModel =
+    { size : Size
+    , player : Maybe Player
+    , library : List IndexedSong
+    }
+
+
+type alias Size =
+    { x : Int, y : Int }
+
+
+type Player
+    = Player
+        { current_playlist : Playlist
+        , seek_pos : Float --this is a percentage of song duration
+        , playing : Bool
+        }
+
+
+type alias Playlist =
+    { prev : List Int, active : Int, next : List Int }
+
+
+flatten_playlist (Playlist prev active next) =
+    prev ++ [ active ] ++ next
 
 
 type alias Album =
     { name : String
-    , songs : List Song
+    , songs : List IndexedSong
     , duration : Int
     , artist : String
     , art : String
@@ -54,9 +83,20 @@ type alias Album =
 
 type alias Artist =
     { name : String
-    , songs : List Song -- TODO this property is redundant with albums
-    , albums : List Album -- TODO need an album for singles
+    , albums : List Album
     , duration : Int
+    }
+
+
+type alias IndexedSong =
+    { index : Int
+    , title : String
+    , artist : String
+    , album : String
+    , duration : Int
+    , number : Int
+    , art : String
+    , playlist : String
     }
 
 
@@ -68,7 +108,7 @@ type alias Artist =
 type Msg
     = NoOp
     | HandleData (WebData (List Song))
-    | LoadSong Song
+    | Play PlaylistType Song
     | PlayAlbumSong Album Song
     | PlayAlbum Album
     | PlayArtist Artist
@@ -95,6 +135,12 @@ type Mode
     | ViewArtist Artist
 
 
+type PlaylistType
+    = All
+    | AlbumPlaylist String
+    | ArtistPlaylist String
+
+
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { data = Loading
@@ -114,10 +160,19 @@ get_screen_info =
     Task.perform WindowInfo Dom.getViewport
 
 
-get_albums songs =
+to_index i (Song title artist album duration number art playlist) =
+    IndexedSong i title artist album duration number art playlist
+
+
+index_songs songs =
+    List.indexedMap to_index songs
+
+
+get_albums : List IndexedSong -> List Album
+get_albums library =
     let
         album_names =
-            Set.toList <| Set.fromList <| List.map .album songs
+            Set.toList <| Set.fromList <| List.map .album library
 
         name_to_album name =
             let
@@ -137,10 +192,31 @@ get_albums songs =
     List.map name_to_album album_names
 
 
+get_album : String -> List IndexedSong -> Maybe Album
+get_album name library =
+    let
+        album_songs =
+            List.sortBy .number <| List.filter ((==) name << .album) library
+    in
+    case album_songs of
+        [] ->
+            Nothing
+
+        _ ->
+            Just
+                { name = name
+                , songs = album_songs
+                , duration = List.foldl (+) 0 (List.map .duration album_songs)
+                , artist = List.foldl (\a b -> a.artist) "" album_songs
+                , art = List.foldl (\a b -> a.art) "" album_songs
+                }
+
+
 get_artists songs =
     let
         artist_names =
             Set.toList <| Set.fromList <| List.map .artist songs
+
 
         name_to_artist name =
             let
@@ -148,10 +224,8 @@ get_artists songs =
                     List.filter ((==) name << .artist) songs
             in
             { name = name
-            , songs = artist_songs
             , duration = List.foldl (+) 0 (List.map .duration artist_songs)
             , albums = List.filter ((==) name << .artist) (get_albums songs)
-
             -- , art = List.foldl (\a b -> a.art) "" artist_songs
             }
     in
@@ -571,7 +645,16 @@ icon name handler =
     Element.image [ onClick handler, pointer, centerY, width (px 25), height (px 25) ] { src = "http://localhost:9000/" ++ name ++ ".png", description = "" }
 
 
-controls song =
+controls playing seek_pos song =
+    let
+        duration =
+            case song of
+                Just s ->
+                    s.duration
+
+                Nothing ->
+                    0
+    in
     Element.row
         [ Background.color Styles.white
         , width fill
@@ -585,12 +668,16 @@ controls song =
         , Element.row [ centerX, spacing 30, Font.bold, Font.color Styles.text_grey ]
             [ icon "shuffle" NoOp
             , icon "prev" Prev
-            , icon "play" TogglePlay
+            , if playing then
+                icon "pause" TogglePlay
+
+              else
+                icon "play" TogglePlay
             , icon "next" Next
             , icon "repeat" NoOp
             ]
         , Element.row [ alignRight, spacing 30 ]
-            [ text "0:00 / 0:00"
+            [ text <| format_duration (floor (seek_pos * toFloat duration)) ++ " / " ++ format_duration duration
             , icon "volume" NoOp
             , text "----------------"
             ]
@@ -605,13 +692,14 @@ seek_bar page_width duration seek_pos =
     Element.row
         [ width fill
         , height (px 4)
+        , paddingXY 1 0
         , Background.color Styles.light_grey
         , pointer
         , Element.htmlAttribute <| Mouse.onClick (\event -> Seek event.offsetPos)
         ]
         [ Element.el
             [ height fill
-            , width (px seek_location)
+            , width (px seek_location |> maximum (page_width - 5))
             , Background.color Styles.link_blue
             ]
           <|
@@ -619,7 +707,7 @@ seek_bar page_width duration seek_pos =
         ]
 
 
-player page_width seek_pos song =
+player playing page_width seek_pos song =
     let
         seek =
             case song of
@@ -635,7 +723,7 @@ player page_width seek_pos song =
         , alignBottom
         ]
         [ seek
-        , controls song
+        , controls playing seek_pos song
         , html <| Html.audio [ HtmlAttribute.attribute "id" "hls-audio" ] []
         ]
 
@@ -823,12 +911,10 @@ artist_album_songs album =
                 , spacing 20
                 , onClick <| LoadSong song
                 ]
-                [ text "01"
+                [ text <| String.pad 2 '0' <| String.fromInt song.number
                 , text song.title
                 , Element.el [ width (fillPortion 1), Border.width 1, Border.dashed, Border.color Styles.light_grey ] <| text ""
-
-                -- , Element.el [alignRight] <| text (String.fromInt song.duration)
-                , Element.el [ alignRight ] <| text "4:05"
+                , Element.el [ alignRight ] <| text <| format_duration song.duration
                 ]
     in
     Element.column [ width (fill |> maximum 1200) ]
@@ -907,7 +993,7 @@ artist_details_header artist =
         ]
 
 
-artist_details_page page_height artist =
+artist_details_page page_height artist = 
     let
         available_height =
             page_height - (70 + 100)
@@ -923,10 +1009,13 @@ artist_details_page page_height artist =
         ]
 
 
-artist_list_page page_height artists =
+artist_list_page pmodel =
     let
         available_height =
-            page_height - (70 + 100)
+            pmodel.size.y - (70 + 100)
+
+        artists =
+            get_artists pmodel.library
     in
     Element.column
         [ paddingEach { edges | top = 40, left = 50, right = 50 }
@@ -1101,10 +1190,13 @@ album_details_page page_height album =
         ]
 
 
-album_list_page page_height albums =
+album_list_page pmodel =
     let
+        albums =
+            get_albums pmodel.library
+
         available_height =
-            page_height - (70 + 100)
+            pmodel.size.y - (70 + 100)
     in
     Element.column
         [ paddingEach { edges | top = 40, left = 50, right = 50 }
@@ -1153,12 +1245,25 @@ songs_row_item value =
             text value
 
 
-songs_row song =
+songs_row : IndexedSong -> Maybe Bool -> Element Msg
+songs_row song status =
+    let
+        color =
+            case status of
+                Just True ->
+                    Styles.link_blue
+
+                Just False ->
+                    Styles.text_grey
+
+                Nothing ->
+                    Styles.text_black
+    in
     Element.row
         [ width fill
         , onClick <| LoadSong song
         , Font.size 15
-        , Font.color Styles.text_black
+        , Font.color color
         , pointer
         , Border.widthEach { edges | bottom = 1 }
         , Border.color Styles.light_grey
@@ -1172,14 +1277,27 @@ songs_row song =
         ]
 
 
-songs_table songs =
-    Element.column [ width fill, spacing 20 ] <| List.map songs_row songs
+songs_table songs player =
+    let
+        status song =
+            case player of
+                Just (Player playlist seek playing) ->
+                    if song.index == playlist.active then
+                        Just playing
+
+                    else
+                        Nothing
+
+                Nothing ->
+                    Nothing
+    in
+    Element.column [ width fill, spacing 20 ] <| List.map (\s -> songs_row s (status s)) songs
 
 
-song_list_page page_height songs =
+song_list_page pmodel =
     let
         available_height =
-            page_height - (70 + 100)
+            pmodel.size.y - (70 + 100)
     in
     Element.column
         [ paddingEach { edges | top = 40, left = 50, right = 50 }
@@ -1189,15 +1307,11 @@ song_list_page page_height songs =
         ]
         [ Styles.title "Songs" [ alignLeft ]
         , songs_table_header
-        , songs_table songs
+        , songs_table pmodel
         ]
 
 
-main_panel model =
-    let
-        songs =
-            RemoteData.withDefault [] model.data
-    in
+main_panel page_model =
     case model.mode of
         Songs ->
             Element.column
@@ -1208,7 +1322,7 @@ main_panel model =
                 , Background.color Styles.white
                 ]
                 [ topbar model
-                , song_list_page model.page_height songs
+                , song_list_page page_model
                 ]
 
         Albums ->
@@ -1220,7 +1334,7 @@ main_panel model =
                 , Background.color Styles.white
                 ]
                 [ topbar model
-                , album_list_page model.page_height <| get_albums songs
+                , album_list_page page_model
                 ]
 
         ViewAlbum album ->
@@ -1232,7 +1346,7 @@ main_panel model =
                 , Background.color Styles.white
                 ]
                 [ topbar model
-                , album_details_page model.page_height album
+                , album_details_page page_model
                 ]
 
         Artists ->
@@ -1244,7 +1358,7 @@ main_panel model =
                 , Background.color Styles.white
                 ]
                 [ topbar model
-                , artist_list_page model.page_height <| get_artists songs
+                , artist_list_page page_model
                 ]
 
         ViewArtist artist ->
@@ -1256,7 +1370,7 @@ main_panel model =
                 , Background.color Styles.white
                 ]
                 [ topbar model
-                , artist_details_page model.page_height artist
+                , artist_details_page page_model
                 ]
 
 
@@ -1271,22 +1385,19 @@ render model =
         Success songs ->
             let
                 library =
-                    RemoteData.withDefault [] model.data
+                    index_songs songs
 
-                playlist =
-                    Maybe.withDefault [] model.current_playlist
-
-                active =
-                    Maybe.withDefault -1 model.active
+                page_model =
+                    PageModel model.page_size model.player library
             in
             Element.row
                 [ width fill
                 , height fill
-                , inFront <| player model.page_width model.seek_pos <| get_song playlist library active
                 , Font.family [ Font.typeface "Open Sans" ]
+                , inFront <| player model.player model.page_width
                 ]
                 [ -- side_panel
-                  main_panel model
+                  main_panel page_model
                 ]
 
         Failure error ->
@@ -1309,13 +1420,17 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
+    let
+        playtime =
+            case model.player of
+                Just (Player playlist seek True) ->
+                    Ports.playtime Playtime
+
+                _ ->
+                    Sub.none
+    in
     Sub.batch
         [ BrowserEvents.onResize (\w h -> Resize w h)
         , Ports.ended PlaybackEnded
-        , if model.playing then Ports.playtime Playtime else Sub.none
+        , playtime
         ]
-
-
-
--- subscribe every second to
--- From index.html, while playing, every second send current song time
