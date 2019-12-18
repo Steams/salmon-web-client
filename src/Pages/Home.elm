@@ -16,7 +16,7 @@ import Html.Attributes as HtmlAttribute
 import Html.Events.Extra.Mouse as Mouse
 import Json.Encode as E
 import Layout exposing (TitleAndContent)
-import List.Extra exposing (find, findIndex, getAt)
+import List.Extra as ListExtra exposing (find, findIndex, getAt, init, last)
 import Ports as Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Route
@@ -56,12 +56,11 @@ type alias Size =
     { x : Int, y : Int }
 
 
-type Player
-    = Player
-        { current_playlist : Playlist
-        , seek_pos : Float --this is a percentage of song duration
-        , playing : Bool
-        }
+type alias Player =
+    { current_playlist : Playlist
+    , seek_pos : Float --this is a percentage of song duration
+    , playing : Bool
+    }
 
 
 type alias Playlist =
@@ -108,7 +107,7 @@ type alias IndexedSong =
 type Msg
     = NoOp
     | HandleData (WebData (List Song))
-    | Play PlaylistType Song
+    | Play PlaylistType IndexedSong
       -- | PlayAlbumSong Album Song
       -- | PlayAlbum Album
       -- | PlayArtist Artist
@@ -144,13 +143,9 @@ type PlaylistType
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { data = Loading
-      , active = Nothing
-      , playing = False
       , mode = Songs
-      , page_height = 0
-      , page_width = 0
-      , seek_pos = 0
-      , current_playlist = Nothing
+      , page_size = Size 0 0
+      , player = Nothing
       }
     , Cmd.batch [ get_screen_info, load_data session ]
     )
@@ -236,9 +231,10 @@ get_artists songs =
     List.map name_to_artist artist_names
 
 
-get_artist : String -> List IndexedSong -> Maybe Album
+get_artist : String -> List IndexedSong -> Maybe Artist
 get_artist name library =
     let
+        artist_album_names : List String
         artist_album_names =
             library
                 |> List.filter (\x -> x.artist == name)
@@ -246,8 +242,9 @@ get_artist name library =
                 |> Set.fromList
                 |> Set.toList
 
+        artist_albums : List Album
         artist_albums =
-            List.filterMap get_album artist_album_names
+            List.filterMap (\x -> get_album x library) artist_album_names
     in
     case artist_albums of
         [] ->
@@ -299,7 +296,7 @@ get_artist name library =
 
 
 empty_song =
-    Song "" "" "" -1 -1 "" ""
+    IndexedSong -1 "" "" "" -1 -1 "" ""
 
 
 load_data session =
@@ -395,32 +392,32 @@ update msg model =
         Play playlist_type song ->
             let
                 library =
-                    RemoteData.withDefault [] model.data
+                    List.indexedMap to_index <| RemoteData.withDefault [] model.data
 
                 playlist : Maybe Playlist
                 playlist =
                     case playlist_type of
                         All ->
                             Just
-                                { prev = List.take song.index library
+                                { prev = List.map .index <| List.take song.index library
                                 , active = song.index
-                                , next = List.drop song.index + 1
+                                , next = List.map .index <| List.drop (song.index + 1) library
                                 }
 
                         AlbumPlaylist name ->
                             let
                                 songs : Maybe (List IndexedSong)
                                 songs =
-                                    Maybe.map .songs <| get_album name
+                                    Maybe.map .songs <| get_album name library
 
                                 position : Maybe Int
                                 position =
-                                    findIndex (\x -> x.title == song.title) songs
+                                    songs |> Maybe.andThen (findIndex (\x -> x.title == song.title))
 
                                 makeplaylist xs pos =
                                     { prev = xs |> List.take pos |> List.map .index
                                     , active = song.index
-                                    , next = xs |> List.drop pos + 1 |> List.map .index
+                                    , next = xs |> List.drop (pos + 1) |> List.map .index
                                     }
                             in
                             Maybe.map2 makeplaylist songs position
@@ -429,18 +426,18 @@ update msg model =
                             let
                                 songs : Maybe (List IndexedSong)
                                 songs =
-                                    get_artist name
+                                    get_artist name library
                                         |> Maybe.map .albums
                                         |> Maybe.map (List.concatMap .songs)
 
                                 position : Maybe Int
                                 position =
-                                    findIndex (\x -> x.title == song.title) songs
+                                    songs |> Maybe.andThen (findIndex (\x -> x.title == song.title))
 
                                 makeplaylist xs pos =
                                     { prev = xs |> List.take pos |> List.map .index
                                     , active = song.index
-                                    , next = xs |> List.drop pos + 1 |> List.map .index
+                                    , next = xs |> List.drop (pos + 1) |> List.map .index
                                     }
                             in
                             Maybe.map2 makeplaylist songs position
@@ -488,132 +485,156 @@ update msg model =
         TogglePlay ->
             let
                 action =
-                    case model.playing of
-                        False ->
-                            Ports.play (E.string "")
+                    case model.player of
+                        Just { current_playlist, seek_pos, playing } ->
+                            if playing then
+                                Ports.pause (E.string "")
 
-                        True ->
-                            Ports.pause (E.string "")
+                            else
+                                Ports.play (E.string "")
+
+                        Nothing ->
+                            Cmd.none
+
+                new_player =
+                    Maybe.map
+                        (\{ current_playlist, seek_pos, playing } ->
+                            Player current_playlist seek_pos (not playing)
+                        )
+                        model.player
             in
-            ( { model | playing = not model.playing }, action )
+            ( { model | player = new_player }, action )
+
+        PlaybackEnded bool ->
+            let
+                library =
+                    List.indexedMap to_index <| RemoteData.withDefault [] model.data
+
+                ( new_player, cmd ) =
+                    case model.player of
+                        Just p ->
+                            case p.current_playlist.next of
+                                [] ->
+                                    ( Just <| Player p.current_playlist p.seek_pos False, Cmd.none )
+
+                                x :: xs ->
+                                    let
+                                        prev =
+                                            p.current_playlist.prev ++ [ p.current_playlist.active ]
+
+                                        active =
+                                            x
+
+                                        next =
+                                            xs
+
+                                        song =
+                                            Maybe.withDefault empty_song <| getAt active library
+                                    in
+                                    ( Just <| Player (Playlist prev active next) 0 True, Ports.initialize (E.string song.playlist) )
+
+                        Nothing ->
+                            ( Nothing, Cmd.none )
+            in
+            ( { model | player = new_player }, cmd )
 
         Next ->
-            case ( model.active, model.current_playlist ) of
-                ( Just i, Just playlist ) ->
-                    let
-                        library =
-                            RemoteData.withDefault [] model.data
+            let
+                library =
+                    List.indexedMap to_index <| RemoteData.withDefault [] model.data
 
-                        active =
-                            if i + 1 < List.length playlist then
-                                i + 1
+                ( new_player, cmd ) =
+                    case model.player of
+                        Just p ->
+                            case p.current_playlist.next of
+                                [] ->
+                                    ( Just <| Player p.current_playlist p.seek_pos False, Cmd.none )
 
-                            else
-                                0
+                                x :: xs ->
+                                    let
+                                        prev =
+                                            p.current_playlist.prev ++ [ p.current_playlist.active ]
 
-                        song =
-                            Maybe.withDefault empty_song <| get_song playlist library active
-                    in
-                    ( { model | active = Just active }
-                    , Ports.initialize (E.string song.playlist)
-                    )
+                                        active =
+                                            x
 
-                _ ->
-                    ( model, Cmd.none )
+                                        next =
+                                            xs
+
+                                        song =
+                                            Maybe.withDefault empty_song <| getAt active library
+                                    in
+                                    ( Just <| Player (Playlist prev active next) 0 True, Ports.initialize (E.string song.playlist) )
+
+                        Nothing ->
+                            ( Nothing, Cmd.none )
+            in
+            ( { model | player = new_player }, cmd )
 
         Prev ->
-            case ( model.active, model.current_playlist ) of
-                ( Just i, Just playlist ) ->
-                    let
-                        library =
-                            RemoteData.withDefault [] model.data
+            let
+                -- TODO you can probably just define library at the top of this entire update case statement
+                library =
+                    List.indexedMap to_index <| RemoteData.withDefault [] model.data
 
-                        active =
-                            if i - 1 >= 0 then
-                                i - 1
+                ( new_player, cmd ) =
+                    case model.player of
+                        Just p ->
+                            case p.current_playlist.prev of
+                                [] ->
+                                    ( Just <| { p | playing = False }, Cmd.none )
 
-                            else
-                                0
+                                xs ->
+                                    let
+                                        prev =
+                                            Maybe.withDefault [] <| ListExtra.init p.current_playlist.prev
 
-                        song =
-                            Maybe.withDefault empty_song <| get_song playlist library active
-                    in
-                    ( { model | active = Just active }
-                    , Ports.initialize (E.string song.playlist)
-                    )
+                                        active =
+                                            Maybe.withDefault -1 <| last xs
 
-                _ ->
-                    ( model, Cmd.none )
+                                        next =
+                                            p.current_playlist.active :: p.current_playlist.next
+
+                                        song =
+                                            Maybe.withDefault empty_song <| getAt active library
+                                    in
+                                    ( Just <| Player (Playlist prev active next) 0 True, Ports.initialize (E.string song.playlist) )
+
+                        Nothing ->
+                            ( Nothing, Cmd.none )
+            in
+            ( { model | player = new_player }, cmd )
 
         Seek ( x, y ) ->
             let
                 seek_pos =
-                    x / toFloat model.page_width
+                    x / toFloat model.page_size.x
+
+                new_player =
+                    Maybe.map (\p -> { p | seek_pos = seek_pos }) model.player
             in
-            ( { model | seek_pos = seek_pos }
+            ( { model | player = new_player }
             , Ports.seek (E.float seek_pos)
             )
 
         Playtime time ->
-            case ( model.active, model.current_playlist ) of
-                ( Just active, Just playlist ) ->
+            case model.player of
+                Just p ->
                     let
                         library =
-                            RemoteData.withDefault [] model.data
+                            List.indexedMap to_index <| RemoteData.withDefault [] model.data
 
                         song =
-                            get_song playlist library active
+                            Maybe.withDefault empty_song <| getAt p.current_playlist.active library
 
                         seek =
-                            case song of
-                                Just s ->
-                                    time / toFloat s.duration
+                            time / toFloat song.duration
 
-                                Nothing ->
-                                    model.seek_pos
+                        new_player =
+                            { p | seek_pos = seek }
                     in
-                    ( { model | seek_pos = seek }
+                    ( { model | player = Just new_player }
                     , Cmd.none
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        PlaybackEnded bool ->
-            case ( model.active, model.current_playlist ) of
-                ( Just i, Just playlist ) ->
-                    let
-                        _ =
-                            Debug.log "PLayback ended" bool
-
-                        library =
-                            RemoteData.withDefault [] model.data
-
-                        active =
-                            if i + 1 < List.length playlist then
-                                Just (i + 1)
-
-                            else
-                                Nothing
-
-                        song =
-                            case active of
-                                Just n ->
-                                    get_song playlist library n
-
-                                Nothing ->
-                                    Nothing
-
-                        ( cmd, playing ) =
-                            case song of
-                                Just s ->
-                                    ( Ports.initialize (E.string s.playlist), True )
-
-                                Nothing ->
-                                    ( Cmd.none, False )
-                    in
-                    ( { model | active = active, playing = playing }
-                    , cmd
                     )
 
                 _ ->
@@ -639,7 +660,7 @@ update msg model =
                 _ =
                     Debug.log "" info
             in
-            ( { model | page_height = round info.viewport.height, page_width = round info.viewport.width }
+            ( { model | page_size = Size (round info.viewport.height) (round info.viewport.width) }
             , Cmd.none
             )
 
@@ -648,7 +669,7 @@ update msg model =
                 _ =
                     Debug.log "size " h
             in
-            ( { model | page_height = h, page_width = w }
+            ( { model | page_size = Size w h }
             , Cmd.none
             )
 
@@ -703,6 +724,7 @@ icon name handler =
     Element.image [ onClick handler, pointer, centerY, width (px 25), height (px 25) ] { src = "http://localhost:9000/" ++ name ++ ".png", description = "" }
 
 
+controls : Bool -> Float -> Maybe IndexedSong -> Element Msg
 controls playing seek_pos song =
     let
         duration =
@@ -767,19 +789,23 @@ seek_bar page_width duration seek_pos =
 
 player_bar pmodel =
     let
-        song_index =
+        index =
             Maybe.map (.active << .current_playlist) pmodel.player
 
-        seek_pos =
-            Maybe.map .seek_pos pmodel.player
+        song : Maybe IndexedSong
+        song =
+            index |> Maybe.andThen (\x -> getAt x pmodel.library)
 
-        duration =
-            Maybe.map .seek_pos pmodel.player
+        seek_pos =
+            Maybe.withDefault 0 <| Maybe.map .seek_pos pmodel.player
+
+        playing =
+            Maybe.withDefault False <| Maybe.map .playing pmodel.player
 
         seek =
             case song of
                 Just s ->
-                    Maybe.map2 (seek_bar pmodel.page_size.x) duration seek_pos
+                    seek_bar pmodel.page_size.x s.duration seek_pos
 
                 Nothing ->
                     Element.none
@@ -951,7 +977,7 @@ artist_row artist =
         [ artist_art ""
         , artist_row_item artist.name
         , artist_row_item "album count"
-        , artist_row_item (String.fromInt <| List.length artist.songs)
+        , artist_row_item (String.fromInt <| List.length <| List.concat <| List.map .songs artist.albums)
         , artist_row_item <| format_duration artist.duration
         ]
 
@@ -1200,7 +1226,7 @@ album_songs_row song =
 
 
 album_songs_table songs =
-    Element.column [ width fill, spacing 20 ] <| List.map songs_row songs
+    Element.column [ width fill, spacing 20 ] <| List.map (\ x -> songs_row x Nothing) songs
 
 
 album_songs_table_header =
@@ -1371,8 +1397,8 @@ songs_table songs player =
     let
         status song =
             case player of
-                Just (Player { playlist, seek, playing }) ->
-                    if song.index == playlist.active then
+                Just { current_playlist, seek_pos, playing } ->
+                    if song.index == current_playlist.active then
                         Just playing
 
                     else
@@ -1397,7 +1423,7 @@ song_list_page pmodel =
         ]
         [ Styles.title "Songs" [ alignLeft ]
         , songs_table_header
-        , songs_table pmodel
+        , songs_table pmodel.library pmodel.player
         ]
 
 
@@ -1513,7 +1539,7 @@ subscriptions model =
     let
         playtime =
             case model.player of
-                Just (Player { playlist, seek, playing }) ->
+                Just { current_playlist, seek_pos, playing } ->
                     if playing then
                         Ports.playtime Playtime
 
