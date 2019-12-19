@@ -805,7 +805,7 @@ player_bar pmodel =
         seek =
             case song of
                 Just s ->
-                    seek_bar pmodel.page_size.x s.duration seek_pos
+                    seek_bar pmodel.size.x s.duration seek_pos
 
                 Nothing ->
                     Element.none
@@ -866,10 +866,10 @@ searchbar =
             }
 
 
-topbar model =
+topbar model mode =
     let
         isAlbums =
-            case model.mode of
+            case mode of
                 Albums ->
                     True
 
@@ -880,10 +880,10 @@ topbar model =
                     False
 
         isSongs =
-            Songs == model.mode
+            Songs == mode
 
         isArtists =
-            Artists == model.mode
+            Artists == mode
     in
     Element.row
         [ height (px 70)
@@ -1067,7 +1067,7 @@ artist_details_header artist =
                     NoOp
 
                 album :: _ ->
-                    case artist.songs of
+                    case album.songs of
                         [] ->
                             NoOp
 
@@ -1092,7 +1092,7 @@ artist_details_header artist =
                 -- , Element.row [ Font.color Styles.text_grey ] [ text " BY : ", Element.el [ Font.color Styles.link_blue ] <| text artist.artist ]
                 ]
             , Element.row [ spacing 50 ]
-                [ Element.row [ spacing 10 ] [ icon "music" NoOp, text <| (String.fromInt <| List.length artist.songs) ++ " tracks" ]
+                [ Element.row [ spacing 10 ] [ icon "music" NoOp, text <| (String.fromInt <| List.length <| List.concat <| List.map .songs artist.albums) ++ " tracks" ]
                 , Element.row [ spacing 10 ] [ icon "duration" NoOp, text <| format_duration artist.duration ]
                 ]
             , button "PLAY" play_action
@@ -1427,6 +1427,7 @@ song_list_page pmodel =
         ]
 
 
+main_panel : Mode -> PageModel -> Element Msg
 main_panel mode pmodel =
     case mode of
         Songs ->
@@ -1437,7 +1438,7 @@ main_panel mode pmodel =
                 , spacing 10
                 , Background.color Styles.white
                 ]
-                [ topbar pmodel
+                [ topbar pmodel mode
                 , song_list_page pmodel
                 ]
 
@@ -1449,7 +1450,7 @@ main_panel mode pmodel =
                 , spacing 10
                 , Background.color Styles.white
                 ]
-                [ topbar pmodel
+                [ topbar pmodel mode
                 , album_list_page pmodel
                 ]
 
@@ -1461,8 +1462,8 @@ main_panel mode pmodel =
                 , spacing 10
                 , Background.color Styles.white
                 ]
-                [ topbar pmodel
-                , album_details_page pmodel
+                [ topbar pmodel mode
+                , album_details_page pmodel.size.y album
                 ]
 
         Artists ->
@@ -1473,7 +1474,7 @@ main_panel mode pmodel =
                 , spacing 10
                 , Background.color Styles.white
                 ]
-                [ topbar pmodel
+                [ topbar pmodel mode
                 , artist_list_page pmodel
                 ]
 
@@ -1485,8 +1486,8 @@ main_panel mode pmodel =
                 , spacing 10
                 , Background.color Styles.white
                 ]
-                [ topbar pmodel
-                , artist_details_page pmodel
+                [ topbar pmodel mode
+                , artist_details_page pmodel.size.y artist
                 ]
 
 
