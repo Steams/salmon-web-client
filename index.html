@@ -23,11 +23,12 @@
 
 
     var app = Elm.Main.init();
-     var interval;
+    var audio; document.getElementById("hls-audio");
+    var interval;
 
      app.ports.play.subscribe(function() {
 
-         let audio = document.getElementById("hls-audio");
+         /* let audio = document.getElementById("hls-audio"); */
          console.log(audio)
          audio.play()
          interval = setInterval(function(){app.ports.playtime.send(audio.currentTime)}, 50);
@@ -36,7 +37,7 @@
 
      app.ports.pause.subscribe(function() {
 
-         let audio = document.getElementById("hls-audio");
+         /* let audio = document.getElementById("hls-audio"); */
          console.log(audio)
          audio.pause()
          clearInterval(interval)
@@ -46,10 +47,19 @@
      /* setTimeout(function(){app.ports.ended.send(true);},2000); */
     app.ports.initialize.subscribe(function(url) {
 
+
         console.log(url)
 
+         if(!audio){
+             audio = document.getElementById("hls-audio");
 
-        let audio = document.getElementById("hls-audio");
+             audio.addEventListener("ended", function(){
+                 console.log("ended")
+                 /* setTimeout(function(){app.ports.ended.send(true);},1000); */
+                 app.ports.ended.send(true)
+             })
+         }
+
 
         console.log(audio)
         let source = url
@@ -74,11 +84,6 @@
                     app.ports.playtime.send(audio.currentTime)
                 }, 50);
 
-                audio.addEventListener("ended", function(){
-                    console.log("ended")
-                    /* setTimeout(function(){app.ports.ended.send(true);},1000); */
-                    app.ports.ended.send(true)
-                })
             });
 
         }
@@ -86,7 +91,7 @@
 
      app.ports.seek.subscribe(function(pos) {
 
-         let audio = document.getElementById("hls-audio");
+         /* let audio = document.getElementById("hls-audio"); */
          console.log(pos)
          console.log(audio.duration)
          audio.currentTime = (audio.duration * pos);

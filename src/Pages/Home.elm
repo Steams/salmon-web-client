@@ -410,6 +410,8 @@ update msg model =
                                 songs =
                                     Maybe.map .songs <| get_album name library
 
+                                _ = Debug.log "album songs" songs
+
                                 position : Maybe Int
                                 position =
                                     songs |> Maybe.andThen (findIndex (\x -> x.title == song.title))
@@ -660,7 +662,7 @@ update msg model =
                 _ =
                     Debug.log "" info
             in
-            ( { model | page_size = Size (round info.viewport.height) (round info.viewport.width) }
+            ( { model | page_size = Size (round info.viewport.width) (round info.viewport.height) }
             , Cmd.none
             )
 
@@ -992,13 +994,38 @@ artist_table artists =
         List.map artist_row artists
 
 
-artist_album_songs album =
+artist_album_songs album player =
     let
-        row song =
+        status song =
+            case player of
+                Just { current_playlist, seek_pos, playing } ->
+                    if song.index == current_playlist.active then
+                        Just playing
+
+                    else
+                        Nothing
+
+                Nothing ->
+                    Nothing
+
+
+        row song stat =
+            let
+              (color, border_color)=
+                  case stat of
+                      Just True ->
+                          (Styles.link_blue,Styles.link_blue)
+
+                      Just False ->
+                          (Styles.text_grey, Styles.light_grey)
+
+                      Nothing ->
+                          (Styles.text_black,Styles.light_grey)
+            in
             Element.row
                 [ width fill
                 , Font.size 15
-                , Font.color Styles.text_black
+                , Font.color color
                 , pointer
                 , height (px 75)
                 , spacing 20
@@ -1006,13 +1033,13 @@ artist_album_songs album =
                 ]
                 [ text <| String.pad 2 '0' <| String.fromInt song.number
                 , text song.title
-                , Element.el [ width (fillPortion 1), Border.width 1, Border.dashed, Border.color Styles.light_grey ] <| text ""
+                , Element.el [ width (fillPortion 1), Border.width 1, Border.dashed, Border.color border_color ] <| text ""
                 , Element.el [ alignRight ] <| text <| format_duration song.duration
                 ]
     in
     Element.column [ width (fill |> maximum 1200) ]
         [ Styles.title album.name [ alignLeft, width fill ]
-        , Element.column [ alignTop, height (shrink |> minimum 300), width fill ] <| List.map row album.songs
+        , Element.column [ alignTop, height (shrink |> minimum 300), width fill ] <| List.map (\x -> row x (status x)) album.songs
         ]
 
 
@@ -1033,7 +1060,7 @@ artist_album_info album =
         ]
 
 
-artist_album_row album =
+artist_album_row player album =
     Element.row
         [ width fill
         , Font.size 15
@@ -1043,11 +1070,11 @@ artist_album_row album =
         , spacing 50
         ]
         [ artist_album_info album
-        , artist_album_songs album
+        , artist_album_songs album player
         ]
 
 
-artist_albums_table albums =
+artist_albums_table albums player =
     Element.column [ width fill, spacing 30, width (fill |> maximum 1400), centerX ] <|
         Element.el
             [ alignLeft
@@ -1056,7 +1083,7 @@ artist_albums_table albums =
             , Font.family [ Font.typeface "Roboto" ]
             ]
             (text "ALBUMS")
-            :: List.map artist_album_row albums
+            :: List.map (artist_album_row player ) albums
 
 
 artist_details_header artist =
@@ -1100,7 +1127,7 @@ artist_details_header artist =
         ]
 
 
-artist_details_page page_height artist =
+artist_details_page page_height artist player =
     let
         available_height =
             page_height - (70 + 100)
@@ -1112,7 +1139,7 @@ artist_details_page page_height artist =
         , scrollbarY
         ]
         [ artist_details_header artist
-        , artist_albums_table artist.albums
+        , artist_albums_table artist.albums player
         ]
 
 
@@ -1205,18 +1232,30 @@ album_table albums =
     Element.column [ width fill, Border.widthEach { edges | top = 1 }, Border.color Styles.light_grey ] <| List.map album_row albums
 
 
-album_songs_row song =
+album_songs_row song status =
+    let
+        color =
+            case status of
+                Just True ->
+                    Styles.link_blue
+
+                Just False ->
+                    Styles.text_grey
+
+                Nothing ->
+                    Styles.text_black
+    in
     Element.row
         [ width fill
         , onClick <| Play (AlbumPlaylist song.album) song
         , Font.size 15
-        , Font.color Styles.text_black
+        , Font.color color
         , pointer
         , Border.widthEach { edges | bottom = 1 }
         , Border.color Styles.light_grey
         , height (px 40)
         ]
-        [ songs_row_item <| String.fromInt song.number
+        [ songs_row_item <| String.pad 2 '0' <| String.fromInt song.number
         , songs_row_item song.title
         , songs_row_item song.artist
         , songs_row_item song.album
@@ -1225,8 +1264,21 @@ album_songs_row song =
         ]
 
 
-album_songs_table songs =
-    Element.column [ width fill, spacing 20 ] <| List.map (\ x -> songs_row x Nothing) songs
+album_songs_table songs player =
+    let
+        status song =
+            case player of
+                Just { current_playlist, seek_pos, playing } ->
+                    if song.index == current_playlist.active then
+                        Just playing
+
+                    else
+                        Nothing
+
+                Nothing ->
+                    Nothing
+    in
+    Element.column [ width fill, spacing 20 ] <| List.map (\ x -> album_songs_row x (status x)) songs
 
 
 album_songs_table_header =
@@ -1288,7 +1340,7 @@ album_details_header album =
         ]
 
 
-album_details_page page_height album =
+album_details_page page_height album player =
     let
         available_height =
             page_height - (70 + 100)
@@ -1302,7 +1354,7 @@ album_details_page page_height album =
         ]
         [ album_details_header album
         , album_songs_table_header
-        , album_songs_table album.songs
+        , album_songs_table album.songs player
         ]
 
 
@@ -1463,7 +1515,7 @@ main_panel mode pmodel =
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
-                , album_details_page pmodel.size.y album
+                , album_details_page pmodel.size.y album pmodel.player
                 ]
 
         Artists ->
@@ -1487,7 +1539,7 @@ main_panel mode pmodel =
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
-                , artist_details_page pmodel.size.y artist
+                , artist_details_page pmodel.size.y artist pmodel.player
                 ]
 
 
