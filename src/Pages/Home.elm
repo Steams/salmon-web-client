@@ -40,20 +40,20 @@ import Tuple
 type alias Model =
     { data : WebData (List Song)
     , mode : Mode
-    , page_size : Size
+    , window : Size
     , player : Maybe Player
     }
 
 
 type alias PageModel =
-    { size : Size
+    { window : Size
     , player : Maybe Player
     , library : List IndexedSong
     }
 
 
 type alias Size =
-    { x : Int, y : Int }
+    { width : Int, height : Int }
 
 
 type alias Player =
@@ -144,7 +144,7 @@ init : Session -> ( Model, Cmd Msg )
 init session =
     ( { data = Loading
       , mode = Songs
-      , page_size = Size 0 0
+      , window = Size 0 0
       , player = Nothing
       }
     , Cmd.batch [ get_screen_info, load_data session ]
@@ -410,7 +410,8 @@ update msg model =
                                 songs =
                                     Maybe.map .songs <| get_album name library
 
-                                _ = Debug.log "album songs" songs
+                                _ =
+                                    Debug.log "album songs" songs
 
                                 position : Maybe Int
                                 position =
@@ -610,7 +611,7 @@ update msg model =
         Seek ( x, y ) ->
             let
                 seek_pos =
-                    x / toFloat model.page_size.x
+                    x / toFloat model.window.width
 
                 new_player =
                     Maybe.map (\p -> { p | seek_pos = seek_pos }) model.player
@@ -660,18 +661,21 @@ update msg model =
         WindowInfo info ->
             let
                 _ =
-                    Debug.log "" info
+                    Debug.log "init window" info
             in
-            ( { model | page_size = Size (round info.viewport.width) (round info.viewport.height) }
+            ( { model | window = Size (round info.viewport.width) (round info.viewport.height) }
             , Cmd.none
             )
 
         Resize w h ->
             let
                 _ =
-                    Debug.log "size " h
+                    Debug.log "width " w
+
+                _ =
+                    Debug.log "height " h
             in
-            ( { model | page_size = Size w h }
+            ( { model | window = Size w h }
             , Cmd.none
             )
 
@@ -713,6 +717,20 @@ now_playing song =
                     ]
                     { src = s.art, description = "" }
                 , Element.column [ spacing 7 ]
+                    [ el [ Font.bold, Font.size 19 ] <| text s.title
+                    , el [ Font.size 15 ] <| text s.album
+                    ]
+                ]
+
+        _ ->
+            Element.column [ spacing 7 ] []
+
+
+phone_now_playing song =
+    case song of
+        Just s ->
+            Element.row [ height fill, spacing 15, alignLeft, width <| fillPortion 1 , clip]
+                [ Element.column [ spacing 7 ]
                     [ el [ Font.bold, Font.size 19 ] <| text s.title
                     , el [ Font.size 15 ] <| text s.album
                     ]
@@ -766,6 +784,39 @@ controls playing seek_pos song =
         ]
 
 
+phone_controls playing seek_pos song =
+    let
+        duration =
+            case song of
+                Just s ->
+                    s.duration
+
+                Nothing ->
+                    0
+    in
+    Element.row
+        [ Background.color Styles.white
+        , width fill
+        , height (px 70)
+        , paddingXY 15 0
+        , Font.color Styles.text_black
+        , Border.color Styles.light_grey
+        , Border.widthEach { edges | top = 1 }
+        , spacing 15
+        ]
+        [ if playing then
+            icon "pause" TogglePlay
+
+          else
+            icon "play" TogglePlay
+        , phone_now_playing song
+        , Element.row [ alignRight, spacing 20, Font.bold, Font.color Styles.text_grey ]
+            [ icon "prev" Prev
+            , icon "next" Next
+            ]
+        ]
+
+
 seek_bar page_width duration seek_pos =
     let
         seek_location =
@@ -807,7 +858,7 @@ player_bar pmodel =
         seek =
             case song of
                 Just s ->
-                    seek_bar pmodel.size.x s.duration seek_pos
+                    seek_bar pmodel.window.width s.duration seek_pos
 
                 Nothing ->
                     Element.none
@@ -819,6 +870,40 @@ player_bar pmodel =
         ]
         [ seek
         , controls playing seek_pos song
+        , html <| Html.audio [ HtmlAttribute.attribute "id" "hls-audio" ] []
+        ]
+
+
+phone_player_bar pmodel =
+    let
+        index =
+            Maybe.map (.active << .current_playlist) pmodel.player
+
+        song : Maybe IndexedSong
+        song =
+            index |> Maybe.andThen (\x -> getAt x pmodel.library)
+
+        seek_pos =
+            Maybe.withDefault 0 <| Maybe.map .seek_pos pmodel.player
+
+        playing =
+            Maybe.withDefault False <| Maybe.map .playing pmodel.player
+
+        seek =
+            case song of
+                Just s ->
+                    seek_bar pmodel.window.width s.duration seek_pos
+
+                Nothing ->
+                    Element.none
+    in
+    Element.column
+        [ height (px 75)
+        , width fill
+        , alignBottom
+        ]
+        [ seek
+        , phone_controls playing seek_pos song
         , html <| Html.audio [ HtmlAttribute.attribute "id" "hls-audio" ] []
         ]
 
@@ -885,7 +970,15 @@ topbar model mode =
             Songs == mode
 
         isArtists =
-            Artists == mode
+            case mode of
+                Artists ->
+                    True
+
+                ViewArtist x ->
+                    True
+
+                _ ->
+                    False
     in
     Element.row
         [ height (px 70)
@@ -900,6 +993,48 @@ topbar model mode =
         , topbar_option "Albums" (ChangeMode Albums) isAlbums
         , topbar_option "Artists" (ChangeMode Artists) isArtists
         , searchbar
+        ]
+
+
+phone_topbar model mode =
+    let
+        isAlbums =
+            case mode of
+                Albums ->
+                    True
+
+                ViewAlbum x ->
+                    True
+
+                _ ->
+                    False
+
+        isSongs =
+            Songs == mode
+
+        isArtists =
+            case mode of
+                Artists ->
+                    True
+
+                ViewArtist x ->
+                    True
+
+                _ ->
+                    False
+    in
+    Element.row
+        [ height (px 70)
+        , width fill
+        , Border.color Styles.light_grey
+        , Border.widthEach { edges | bottom = 1 }
+        , spacing 70
+        , paddingXY 50 0
+        , Background.color Styles.white
+        ]
+        [ topbar_option "Songs" (ChangeMode Songs) isSongs
+        , topbar_option "Albums" (ChangeMode Albums) isAlbums
+        , topbar_option "Artists" (ChangeMode Artists) isArtists
         ]
 
 
@@ -1008,19 +1143,18 @@ artist_album_songs album player =
                 Nothing ->
                     Nothing
 
-
         row song stat =
             let
-              (color, border_color)=
-                  case stat of
-                      Just True ->
-                          (Styles.link_blue,Styles.link_blue)
+                ( color, border_color ) =
+                    case stat of
+                        Just True ->
+                            ( Styles.link_blue, Styles.link_blue )
 
-                      Just False ->
-                          (Styles.text_grey, Styles.light_grey)
+                        Just False ->
+                            ( Styles.text_grey, Styles.light_grey )
 
-                      Nothing ->
-                          (Styles.text_black,Styles.light_grey)
+                        Nothing ->
+                            ( Styles.text_black, Styles.light_grey )
             in
             Element.row
                 [ width fill
@@ -1083,7 +1217,7 @@ artist_albums_table albums player =
             , Font.family [ Font.typeface "Roboto" ]
             ]
             (text "ALBUMS")
-            :: List.map (artist_album_row player ) albums
+            :: List.map (artist_album_row player) albums
 
 
 artist_details_header artist =
@@ -1146,7 +1280,7 @@ artist_details_page page_height artist player =
 artist_list_page pmodel =
     let
         available_height =
-            pmodel.size.y - (70 + 100)
+            pmodel.window.height - (70 + 100)
 
         artists =
             get_artists pmodel.library
@@ -1278,7 +1412,7 @@ album_songs_table songs player =
                 Nothing ->
                     Nothing
     in
-    Element.column [ width fill, spacing 20 ] <| List.map (\ x -> album_songs_row x (status x)) songs
+    Element.column [ width fill, spacing 20 ] <| List.map (\x -> album_songs_row x (status x)) songs
 
 
 album_songs_table_header =
@@ -1364,7 +1498,7 @@ album_list_page pmodel =
             get_albums pmodel.library
 
         available_height =
-            pmodel.size.y - (70 + 100)
+            pmodel.window.height - (70 + 100)
     in
     Element.column
         [ paddingEach { edges | top = 40, left = 50, right = 50 }
@@ -1445,6 +1579,43 @@ songs_row song status =
         ]
 
 
+phone_songs_row : IndexedSong -> Maybe Bool -> Element Msg
+phone_songs_row song status =
+    let
+        color =
+            case status of
+                Just True ->
+                    Styles.link_blue
+
+                Just False ->
+                    Styles.text_grey
+
+                Nothing ->
+                    Styles.text_black
+    in
+    Element.row
+        [ width fill
+        , onClick <| Play All song
+        , Font.size 15
+        , Font.color color
+        , pointer
+        , Border.color Styles.light_grey
+        , height (px 40)
+        , spacing 10
+        ]
+        [ Element.image
+            [ centerY
+            , width (px 40)
+            , height (px 40)
+            ]
+            { src = song.art, description = "" }
+        , Element.column [ spacing 7 ]
+            [ el [ Font.bold, Font.size 14 ] <| text song.title
+            , Element.row [ Font.size 12, spacing 4 ] [ text <| "By " ++ song.artist, text "-", text song.album ]
+            ]
+        ]
+
+
 songs_table songs player =
     let
         status song =
@@ -1465,7 +1636,7 @@ songs_table songs player =
 song_list_page pmodel =
     let
         available_height =
-            pmodel.size.y - (70 + 100)
+            pmodel.window.height - (70 + 100)
     in
     Element.column
         [ paddingEach { edges | top = 40, left = 50, right = 50 }
@@ -1479,15 +1650,63 @@ song_list_page pmodel =
         ]
 
 
-main_panel : Mode -> PageModel -> Element Msg
-main_panel mode pmodel =
+phone_songs_list songs player =
+    let
+        status song =
+            case player of
+                Just { current_playlist, seek_pos, playing } ->
+                    if song.index == current_playlist.active then
+                        Just playing
+
+                    else
+                        Nothing
+
+                Nothing ->
+                    Nothing
+    in
+    Element.column [ width fill, spacing 20 ] <| List.map (\s -> phone_songs_row s (status s)) songs
+
+
+phone_song_list_page pmodel =
+    let
+        available_height =
+            pmodel.window.height - (70 + 100)
+    in
+    Element.column
+        [ paddingEach { edges | top = 40, left = 15, right = 15 }
+        , width fill
+        , height (px available_height)
+        , scrollbarY
+        , spacing 20
+        ]
+        [ Styles.title "Songs" [ alignLeft ]
+        , phone_songs_list pmodel.library pmodel.player
+        ]
+
+
+phone_view : Mode -> PageModel -> Element Msg
+phone_view mode pmodel =
+    case mode of
+        _ ->
+            Element.column
+                [ height fill
+                , width fill
+                , paddingXY 0 0
+                , Background.color Styles.white
+                ]
+                [ phone_topbar pmodel mode
+                , phone_song_list_page pmodel
+                ]
+
+
+desktop_view : Mode -> PageModel -> Element Msg
+desktop_view mode pmodel =
     case mode of
         Songs ->
             Element.column
                 [ height fill
                 , width fill
                 , paddingXY 0 0
-                , spacing 10
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
@@ -1499,7 +1718,6 @@ main_panel mode pmodel =
                 [ height fill
                 , width fill
                 , paddingXY 0 0
-                , spacing 10
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
@@ -1511,11 +1729,10 @@ main_panel mode pmodel =
                 [ height fill
                 , width fill
                 , paddingXY 0 0
-                , spacing 10
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
-                , album_details_page pmodel.size.y album pmodel.player
+                , album_details_page pmodel.window.height album pmodel.player
                 ]
 
         Artists ->
@@ -1523,7 +1740,6 @@ main_panel mode pmodel =
                 [ height fill
                 , width fill
                 , paddingXY 0 0
-                , spacing 10
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
@@ -1535,11 +1751,10 @@ main_panel mode pmodel =
                 [ height fill
                 , width fill
                 , paddingXY 0 0
-                , spacing 10
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
-                , artist_details_page pmodel.size.y artist pmodel.player
+                , artist_details_page pmodel.window.height artist pmodel.player
                 ]
 
 
@@ -1557,17 +1772,39 @@ render model =
                     index_songs songs
 
                 pmodel =
-                    PageModel model.page_size model.player library
+                    PageModel model.window model.player library
+
+                device =
+                    Element.classifyDevice model.window
+
+                _ =
+                    Debug.log "Device" device
+
+                page_elements =
+                    case device.class of
+                        Phone ->
+                            [ phone_view model.mode pmodel ]
+
+                        _ ->
+                            [ -- side_panel
+                              desktop_view model.mode pmodel
+                            ]
+
+                player_element =
+                    case device.class of
+                        Phone ->
+                            phone_player_bar pmodel
+
+                        _ ->
+                            player_bar pmodel
             in
             Element.row
                 [ width fill
                 , height fill
                 , Font.family [ Font.typeface "Open Sans" ]
-                , inFront <| player_bar pmodel
+                , inFront <| player_element
                 ]
-                [ -- side_panel
-                  main_panel model.mode pmodel
-                ]
+                page_elements
 
         Failure error ->
             let
