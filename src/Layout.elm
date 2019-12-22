@@ -8,7 +8,7 @@ import Styles
 
 type Layout
     = Other
-    | Home
+    | Player
     | Login
     | Signup
 
@@ -51,7 +51,7 @@ view_container layout content =
 header : Layout -> Element msg
 header layout =
     Element.row Styles.nav_bar
-        [ navLink layout Route.Home <| Element.el Styles.nav_item <| Element.text "Home"
+        [ navLink layout Route.Player <| Element.el Styles.nav_item <| Element.text "Player"
         , navLink layout (Route.Login) <| Element.el Styles.nav_item <| Element.text "Login"
         ]
 
@@ -67,7 +67,7 @@ navLink layout route label =
 
 isActive layout route =
     case ( layout, route ) of
-        ( Home, Route.Home ) ->
+        ( Player, Route.Player ) ->
             True
 
         ( Login, Route.Login ) ->

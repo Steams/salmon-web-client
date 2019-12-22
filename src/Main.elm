@@ -9,11 +9,11 @@ import Json.Decode as Decode exposing (Value)
 import Json.Encode as Encode
 import Layout as Layout
 import Pages.Blank as Blank
-import Pages.Home as Home
 import Pages.Login as Login
 import Pages.NotFound as NotFound
 import Pages.Signup as Signup
 import Ports as Ports
+import Player as Player
 import RemoteData as RemoteData exposing (RemoteData(..), WebData)
 import Route exposing (Route)
 import Session exposing (Session)
@@ -23,7 +23,7 @@ import Url exposing (Url)
 
 type Page
     = Redirect
-    | Home Home.Model
+    | Player Player.Model
     | Login Login.Model
     | Signup Signup.Model
     | NotFound
@@ -55,7 +55,7 @@ init _ url navKey =
 type Msg
     = ChangeUrl Url
     | RequestUrl Browser.UrlRequest
-    | HomeMsg Home.Msg
+    | PlayerMsg Player.Msg
     | LoginMsg Login.Msg
     | SignupMsg Signup.Msg
     | VerificationResponse (WebData String)
@@ -70,19 +70,19 @@ goto maybeRoute model =
             ( { model | page = NotFound }, Cmd.none )
 
         Just Route.Root ->
-            ( model, Route.replaceUrl model.session.navKey Route.Home )
+            ( model, Route.replaceUrl model.session.navKey Route.Player )
 
-        Just Route.Home ->
+        Just Route.Player ->
             case model.session.csrfToken of
                 "" ->
-                    ( model, get_csrf Route.Home )
+                    ( model, get_csrf Route.Player )
 
                 _ ->
                     let
-                        ( home, home_msg ) =
-                            Home.init model.session
+                        ( player, player_msg ) =
+                            Player.init model.session
                     in
-                    ( { model | page = Home home }, Cmd.map HomeMsg home_msg )
+                    ( { model | page = Player player }, Cmd.map PlayerMsg player_msg )
 
         Just Route.Login ->
             let
@@ -159,7 +159,7 @@ update msg model =
                     { session | csrfToken = token }
             in
             ( { model | session = new_session }
-            , Nav.pushUrl session.navKey (Route.toUrl Route.Home)
+            , Nav.pushUrl session.navKey (Route.toUrl Route.Player)
             )
 
         ( VerificationResponse res, _ ) ->
@@ -179,7 +179,7 @@ update msg model =
             in
             ( { model | session = new_session }
             , Cmd.batch
-                [ Nav.pushUrl session.navKey (Route.toUrl Route.Home)
+                [ Nav.pushUrl session.navKey (Route.toUrl Route.Player)
                 ]
             )
 
@@ -208,13 +208,13 @@ update msg model =
             , Cmd.map SignupMsg signup_msg
             )
 
-        ( HomeMsg subMsg, Home home ) ->
+        ( PlayerMsg subMsg, Player player ) ->
             let
-                ( home_model, home_msg ) =
-                    Home.update subMsg home
+                ( player_model, player_msg ) =
+                    Player.update subMsg player
             in
-            ( { model | page = Home home_model }
-            , Cmd.map HomeMsg home_msg
+            ( { model | page = Player player_model }
+            , Cmd.map PlayerMsg player_msg
             )
 
         ( _, _ ) ->
@@ -239,8 +239,8 @@ view model =
         NotFound ->
             render Layout.Other (\_ -> NoOp) NotFound.view
 
-        Home home ->
-            render Layout.Home HomeMsg (Home.view home)
+        Player player ->
+            render Layout.Player PlayerMsg (Player.view player)
 
         Login login ->
             render Layout.Login LoginMsg (Login.view login)
@@ -256,9 +256,9 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.page of
-        Home home ->
+        Player player ->
             Sub.batch
-                [ Sub.map HomeMsg (Home.subscriptions home)
+                [ Sub.map PlayerMsg (Player.subscriptions player)
                 ]
 
         _ ->
