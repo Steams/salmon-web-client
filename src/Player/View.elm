@@ -26,9 +26,9 @@ import Styles exposing (edges,icon)
 import Task
 import Tuple
 import Player.Data exposing(..)
-import Player.AlbumsView exposing(..)
-import Player.ArtistsView exposing(..)
-import Player.SongsView exposing(..)
+import Player.AlbumsView as AlbumsView
+import Player.ArtistsView as ArtistsView
+import Player.SongsView as SongsView
 
 
 
@@ -54,7 +54,7 @@ side_panel =
 now_playing song =
     case song of
         Just s ->
-            Element.row [ height fill, spacing 15, alignLeft, width (px 400) ]
+            Element.row [ height fill, spacing 15, width fill ]
                 [ Element.image
                     [ centerY
                     , width (px 70)
@@ -69,13 +69,13 @@ now_playing song =
                 ]
 
         _ ->
-            Element.column [ spacing 7 ] []
+            Element.column [ width fill] []
 
 
 phone_now_playing song =
     case song of
         Just s ->
-            Element.row [ height fill, spacing 15, alignLeft, width <| fillPortion 1, clip ]
+            Element.row [ height fill, spacing 15, alignLeft, width fill, clip ]
                 [ Element.column [ spacing 7 ]
                     [ el [ Font.bold, Font.size 19 ] <| text s.title
                     , el [ Font.size 15 ] <| text s.album
@@ -83,7 +83,7 @@ phone_now_playing song =
                 ]
 
         _ ->
-            Element.column [ spacing 7 ] []
+            Element.column [ width fill] []
 
 
 
@@ -108,7 +108,7 @@ controls playing seek_pos song =
         , Border.color Styles.light_grey
         , Border.widthEach { edges | top = 1 }
         ]
-        [ now_playing song
+        [ Element.row [alignLeft, clip, width (px 500), height fill] [now_playing song]
         , Element.row [ centerX, spacing 30, Font.bold, Font.color Styles.text_grey ]
             [ icon "shuffle" NoOp
             , icon "prev" Prev
@@ -385,15 +385,23 @@ phone_topbar model mode =
 phone_view : Mode -> PageModel -> Element Msg
 phone_view mode pmodel =
     case mode of
+        Albums ->
+            Element.column
+                [ height fill
+                , width fill
+                , Background.color Styles.white
+                ]
+                [ phone_topbar pmodel mode
+                , AlbumsView.phone_view pmodel
+                ]
         _ ->
             Element.column
                 [ height fill
                 , width fill
-                , paddingXY 0 0
                 , Background.color Styles.white
                 ]
                 [ phone_topbar pmodel mode
-                , phone_song_list_page pmodel
+                , SongsView.phone_song_list_page pmodel
                 ]
 
 
@@ -408,7 +416,7 @@ desktop_view mode pmodel =
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
-                , song_list_page pmodel
+                , SongsView.song_list_page pmodel
                 ]
 
         Albums ->
@@ -419,7 +427,7 @@ desktop_view mode pmodel =
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
-                , album_list_page pmodel
+                , AlbumsView.album_list_page pmodel
                 ]
 
         ViewAlbum album ->
@@ -430,7 +438,7 @@ desktop_view mode pmodel =
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
-                , album_details_page pmodel.window.height album pmodel.player
+                , AlbumsView.album_details_page pmodel.window.height album pmodel.player
                 ]
 
         Artists ->
@@ -441,7 +449,7 @@ desktop_view mode pmodel =
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
-                , artist_list_page pmodel
+                , ArtistsView.artist_list_page pmodel
                 ]
 
         ViewArtist artist ->
@@ -452,7 +460,7 @@ desktop_view mode pmodel =
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
-                , artist_details_page pmodel.window.height artist pmodel.player
+                , ArtistsView.artist_details_page pmodel.window.height artist pmodel.player
                 ]
 
 render model =

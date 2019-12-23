@@ -224,3 +224,24 @@ album_list_page pmodel =
         , album_table_header
         , album_table albums
         ]
+
+
+phone_view pmodel =
+    let
+        albums =
+            get_albums pmodel.library
+
+        available_height =
+            pmodel.window.height - (70 + 100)
+    in
+    Element.column
+        [ paddingEach { edges | top = 40, left = 50, right = 50 }
+        , width fill
+        , height fill
+        , height (px available_height)
+        , scrollbarY
+        ]
+        [ Styles.title "Albums" [ alignLeft ]
+        , album_table_header
+        , album_table albums
+        ]

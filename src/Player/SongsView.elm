@@ -6,8 +6,9 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
-import Styles exposing (edges)
 import Player.Data exposing (..)
+import Styles exposing (edges)
+
 
 songs_table_header =
     let
@@ -101,9 +102,14 @@ phone_songs_row song status =
             , height (px 40)
             ]
             { src = song.art, description = "" }
-        , Element.column [ spacing 7 ]
-            [ el [ Font.bold, Font.size 14 ] <| text song.title
-            , Element.row [ Font.size 12, spacing 4 ] [ text <| "By " ++ song.artist, text "-", text song.album ]
+        , Element.column [ spacing 7, width fill]
+            [ el [ Font.bold, Font.size 14, width (fill |> maximum 300), clip] <| text song.title
+            , Element.row [ Font.size 12, spacing 4, width fill ]
+                [ text <| song.artist
+                , text "-"
+                , text song.album
+                , Element.el [ alignRight, width (px 100) ] <| text <| format_duration song.duration
+                ]
             ]
         ]
 
