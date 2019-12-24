@@ -6,9 +6,10 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
-import RemoteData exposing (RemoteData(..), WebData)
-import Styles exposing (edges,button,icon)
 import Player.Data exposing (..)
+import RemoteData exposing (RemoteData(..), WebData)
+import Styles exposing (button, edges, icon)
+
 
 album_table_header =
     let
@@ -78,6 +79,7 @@ album_songs_row_item value =
     Element.el [ clipX, width <| fillPortion 1, height (px 30) ] <|
         Element.el [ width (fill |> maximum 330), clip ] <|
             text value
+
 
 album_songs_row song status =
     let
@@ -205,7 +207,7 @@ album_details_page page_height album player =
         ]
 
 
-album_list_page pmodel =
+desktop_view pmodel =
     let
         albums =
             get_albums pmodel.library
@@ -224,6 +226,120 @@ album_list_page pmodel =
         , album_table_header
         , album_table albums
         ]
+
+
+-- phone_details_header album =
+--     let
+--         play_action =
+--             case album.songs of
+--                 [] ->
+--                     NoOp
+
+--                 x :: xs ->
+--                     Play (AlbumPlaylist album.name) x
+--     in
+--     Element.column [ height (px 400), width fill, spacing 20 ]
+--         [ Element.el [ height (px 300), width fill] <|
+--             Element.image
+--                 [ centerY
+--                 , centerX
+--                 , width (px 200)
+--                 , height (px 200)
+--                 , Border.shadow { offset = ( -3, 3 ), size = 0, blur = 8, color = Styles.light_grey }
+--                 ]
+--                 { src = album.art, description = "" }
+--         , Styles.title album.name [ centerX ]
+--         , Element.row
+--             [ Font.color Styles.text_grey
+--             , centerX
+--             ]
+--             [ text " BY : "
+--             , Element.el [ Font.color Styles.link_blue ] <| text album.artist
+--             ]
+--         , Element.el [centerX, width (px 200)] <| button "PLAY" play_action
+--         ]
+
+phone_details_header album =
+    let
+        play_action =
+            case album.songs of
+                [] ->
+                    NoOp
+
+                x :: xs ->
+                    Play (AlbumPlaylist album.name) x
+    in
+    Element.row [ height (px 400), width fill, spacing 40 ]
+        [ Element.el [ height (px 200) ] <|
+            Element.image
+                [ centerY
+                , width (px 200)
+                , height (px 200)
+                , Border.shadow { offset = ( -3, 3 ), size = 0, blur = 8, color = Styles.light_grey }
+                ]
+                { src = album.art, description = "" }
+        , Element.column [ height (px 300), spaceEvenly ]
+            [ Element.column [ spacing 15 ]
+                [ Element.el [ Font.color Styles.text_grey, Font.size 15 ] <| text " ALBUM"
+                , Styles.title album.name []
+                , Element.row [ Font.color Styles.text_grey ] [ text " BY : ", Element.el [ Font.color Styles.link_blue ] <| text album.artist ]
+                ]
+            , Element.row [ spacing 50 ]
+                [ Element.row [ spacing 10 ] [ icon "music" NoOp, text <| (String.fromInt <| List.length album.songs) ++ " tracks" ]
+                , Element.row [ spacing 10 ] [ icon "duration" NoOp, text <| format_duration album.duration ]
+                ]
+            , button "PLAY" play_action
+            ]
+        ]
+
+
+
+
+phone_details_page page_height album player =
+    let
+        available_height =
+            page_height - (70 + 100)
+    in
+    Element.column
+        [
+         width fill
+        , height fill
+        , height (px available_height)
+        , scrollbarY
+        ]
+        [ phone_details_header album
+        ]
+
+
+phone_album_row album =
+    Element.row
+        [ width fill
+        , onClick <| SelectAlbum album
+        , Font.size 15
+        , Font.color Styles.text_black
+        , pointer
+        , Border.color Styles.light_grey
+        , height (px 40)
+        , spacing 10
+        ]
+        [ Element.image
+            [ centerY
+            , width (px 40)
+            , height (px 40)
+            ]
+            { src = album.art, description = "" }
+        , Element.column [ spacing 7, width fill ]
+            [ el [ Font.bold, Font.size 14, width (fill |> maximum 300), clip ] <| text album.name
+            , Element.row [ Font.size 12, spacing 4, width fill ]
+                [ text <| album.artist
+                , Element.el [ alignRight, width (px 100) ] <| text <| format_duration album.duration
+                ]
+            ]
+        ]
+
+
+phone_album_list albums =
+    Element.column [ width fill ] <| List.map phone_album_row albums
 
 
 phone_view pmodel =
@@ -242,6 +358,5 @@ phone_view pmodel =
         , scrollbarY
         ]
         [ Styles.title "Albums" [ alignLeft ]
-        , album_table_header
-        , album_table albums
+        , phone_album_list albums
         ]

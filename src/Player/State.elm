@@ -34,7 +34,8 @@ import Player.SongsView exposing(..)
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { data = Loading
-      , mode = Songs
+      -- , mode = Songs
+      , mode = Albums
       , window = Size 0 0
       , player = Nothing
       }

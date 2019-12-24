@@ -370,10 +370,10 @@ phone_topbar model mode =
     Element.row
         [ height (px 70)
         , width fill
+        , paddingXY 40 0
         , Border.color Styles.light_grey
         , Border.widthEach { edges | bottom = 1 }
         , spacing 70
-        , paddingXY 50 0
         , Background.color Styles.white
         ]
         [ topbar_option "Songs" (ChangeMode Songs) isSongs
@@ -393,6 +393,16 @@ phone_view mode pmodel =
                 ]
                 [ phone_topbar pmodel mode
                 , AlbumsView.phone_view pmodel
+                ]
+
+        ViewAlbum album ->
+            Element.column
+                [ height fill
+                , width fill
+                , Background.color Styles.white
+                ]
+                [ phone_topbar pmodel mode
+                , AlbumsView.phone_details_page pmodel.window.height album pmodel.player
                 ]
         _ ->
             Element.column
@@ -427,7 +437,7 @@ desktop_view mode pmodel =
                 , Background.color Styles.white
                 ]
                 [ topbar pmodel mode
-                , AlbumsView.album_list_page pmodel
+                , AlbumsView.desktop_view pmodel
                 ]
 
         ViewAlbum album ->
