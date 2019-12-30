@@ -108,7 +108,7 @@ phone_songs_row song status =
                 [ text <| song.artist
                 , text "-"
                 , text song.album
-                , Element.el [ alignRight, width (px 100) ] <| text <| format_duration song.duration
+                , Element.el [ alignRight ] <| text <| format_duration song.duration
                 ]
             ]
         ]
@@ -162,13 +162,13 @@ phone_songs_list songs player =
                 Nothing ->
                     Nothing
     in
-    Element.column [ width fill, spacing 20 ] <| List.map (\s -> phone_songs_row s (status s)) songs
+    Element.column [ width fill, spacing 10 ] <| List.map (\s -> phone_songs_row s (status s)) songs
 
 
 phone_song_list_page pmodel =
     let
         available_height =
-            pmodel.window.height - (70 + 100)
+            pmodel.window.height - (70 + 75)
     in
     Element.column
         [ paddingEach { edges | top = 40, left = 15, right = 15 }
