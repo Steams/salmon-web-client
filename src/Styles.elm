@@ -1,9 +1,43 @@
 module Styles exposing (..)
 
+import Element.Events exposing (onClick)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Element.Input as Input
+
+
+
+-- Components
+
+
+button value handler =
+    Input.button
+        [ height (px 55)
+        , width (px 150)
+        , Border.rounded 100
+        , Border.width 2
+        , Border.color blue
+        , Font.size 12
+        , Font.center
+        , Font.color blue
+        , Font.bold
+        ]
+        { onPress = Just handler
+        , label = text value
+        }
+
+
+icon name handler =
+    Element.image
+        [ onClick handler
+        , pointer
+        , centerY
+        , width (px 25)
+        , height (px 25)
+        ]
+        { src = "http://localhost:9000/" ++ name ++ ".png", description = "" }
 
 
 
