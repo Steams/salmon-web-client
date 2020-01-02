@@ -248,4 +248,100 @@ artist_list_page pmodel =
         , artist_table artists
         ]
 
+phone_artist_row artist =
+    Element.row
+        [ width fill
+        , onClick <| SelectArtist artist
+        , Font.size 15
+        , Font.color Styles.text_black
+        , pointer
+        , Border.color Styles.light_grey
+        , height (px 40)
+        , spacing 10
+        ]
+        [ Element.column [ spacing 7, width fill ]
+            [ el [ Font.bold, Font.size 14, width (fill |> maximum 300), clip ] <| text artist.name
+            , Element.row [ Font.size 12, spacing 4, width fill ]
+                [
+                  Element.el [ alignLeft ] <| text <| (++) "albums : " <| String.fromInt <| List.length artist.albums
+                 , Element.el [ alignRight ] <| text <| format_duration artist.duration
+                ]
+            ]
+        ]
 
+phone_details_header artist =
+    let
+        play_action =
+            case artist.albums of
+                [] ->
+                    NoOp
+
+                album :: _ ->
+                    case album.songs of
+                        [] ->
+                            NoOp
+
+                        x :: _ ->
+                            Play (ArtistPlaylist artist.name) x
+    in
+    Element.column [ width fill ]
+        [ Element.row [ height (px 200), width fill, spacing 10 ]
+            [ Element.el [ centerY, height (px 200), width (px 200) ] <|
+                Element.image
+                    [ width (px 200)
+                    , height (px 200)
+                    , Border.shadow { offset = ( -3, 3 ), size = 0, blur = 8, color = Styles.light_grey }
+                    ]
+                    { src = "", description = "" }
+            , Element.column [ centerY, height (px 200), spaceEvenly ]
+                [ Element.column [ spacing 15 ]
+                    [
+                     Element.row [ Font.color Styles.text_grey ] [ Element.el [ Font.color Styles.link_blue ] <| text artist.name ]
+                    ]
+
+                , Element.row [ spacing 10 ] [ icon "music" NoOp, text <| (String.fromInt <| List.length <| List.concat <| List.map .songs artist.albums) ++ " tracks" ]
+                , Element.row [ spacing 10 ] [ icon "duration" NoOp, text <| format_duration artist.duration ]
+                , Element.row [ spacing 10, pointer, onClick play_action ] [ icon "play" NoOp, text "Play All" ]
+                ]
+            ]
+        ]
+
+
+
+phone_details_page page_height artist player =
+    let
+        available_height =
+            page_height - (70 + 100)
+    in
+    Element.column
+        [ paddingEach { edges | top = 40, left = 15, right = 15 }
+        , width fill
+        , height (px available_height)
+        , scrollbarY
+        ]
+        [ phone_details_header artist
+        ]
+
+
+phone_artists_list artists =
+    Element.column [ width fill, spacing 10 ] <| List.map phone_artist_row artists
+
+phone_view pmodel =
+    let
+        artists =
+            get_artists pmodel.library
+
+        available_height =
+            pmodel.window.height - (70 + 75)
+    in
+    Element.column
+        [ paddingEach { edges | top = 40, left = 15, right = 15 }
+        , width fill
+        , height fill
+        , height (px available_height)
+        , scrollbarY
+        , spacing 20
+        ]
+        [ Styles.title "Artists" [ alignLeft ]
+        , phone_artists_list artists
+        ]

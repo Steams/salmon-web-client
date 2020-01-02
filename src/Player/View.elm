@@ -404,6 +404,27 @@ phone_view mode pmodel =
                 [ phone_topbar pmodel mode
                 , AlbumsView.phone_details_page pmodel.window.height album pmodel.player
                 ]
+
+        Artists ->
+            Element.column
+                [ height fill
+                , width fill
+                , Background.color Styles.white
+                ]
+                [ phone_topbar pmodel mode
+                , ArtistsView.phone_view pmodel
+                ]
+
+        ViewArtist artist ->
+            Element.column
+                [ height fill
+                , width fill
+                , paddingXY 0 0
+                , Background.color Styles.white
+                ]
+                [ phone_topbar pmodel mode
+                , ArtistsView.phone_details_page pmodel.window.height artist pmodel.player
+                ]
         _ ->
             Element.column
                 [ height fill
