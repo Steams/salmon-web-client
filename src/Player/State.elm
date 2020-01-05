@@ -17,6 +17,10 @@ import Html.Events.Extra.Mouse as Mouse
 import Json.Encode as E
 import Layout exposing (TitleAndContent)
 import List.Extra as ListExtra exposing (find, findIndex, getAt, init, last)
+import Player.AlbumsView exposing (..)
+import Player.ArtistsView exposing (..)
+import Player.Data exposing (..)
+import Player.SongsView exposing (..)
 import Ports as Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Route
@@ -25,15 +29,12 @@ import Set as Set
 import Styles exposing (edges)
 import Task
 import Tuple
-import Player.Data exposing(..)
-import Player.AlbumsView exposing(..)
-import Player.ArtistsView exposing(..)
-import Player.SongsView exposing(..)
 
 
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { data = Loading
+
       -- , mode = Songs
       , mode = Albums
       , window = Size 0 0
@@ -46,8 +47,10 @@ init session =
 load_data session =
     get_data session.csrfToken HandleData
 
+
 get_screen_info =
     Task.perform WindowInfo Dom.getViewport
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -238,7 +241,12 @@ update msg model =
                                         song =
                                             Maybe.withDefault empty_song <| getAt active library
                                     in
-                                    ( Just <| Player (Playlist prev active next) 0 True, Ports.initialize (E.string song.playlist) )
+                                        -- NOTE If user clicks back during the first 10% of a song, go to previous, otherwise just restart song
+                                    if p.seek_pos < 0.1 then
+                                        ( Just <| Player (Playlist prev active next) 0 True, Ports.initialize (E.string song.playlist) )
+
+                                    else
+                                        ( Just <| Player p.current_playlist 0 True, Ports.seek (E.float 0) )
 
                         Nothing ->
                             ( Nothing, Cmd.none )
@@ -320,7 +328,6 @@ update msg model =
             ( model
             , Cmd.none
             )
-
 
 
 subscriptions : Model -> Sub Msg

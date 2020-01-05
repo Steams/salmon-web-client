@@ -292,6 +292,7 @@ phone_details_header artist =
                     [ width (px 200)
                     , height (px 200)
                     , Border.shadow { offset = ( -3, 3 ), size = 0, blur = 8, color = Styles.light_grey }
+                    , Border.rounded 200
                     ]
                     { src = "", description = "" }
             , Element.column [ centerY, height (px 200), spaceEvenly ]
