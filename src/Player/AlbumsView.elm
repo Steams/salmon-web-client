@@ -260,6 +260,37 @@ phone_details_header album =
             ]
         ]
 
+phone_song_row song stat =
+    let
+        ( color, border_color ) =
+            case stat of
+                Just True ->
+                    ( Styles.link_blue, Styles.link_blue )
+
+                Just False ->
+                    ( Styles.text_grey, Styles.light_grey )
+
+                Nothing ->
+                    ( Styles.text_black, Styles.light_grey )
+    in
+    Element.row
+        [ width fill
+        , Font.size 15
+        , Font.color color
+        , pointer
+        , height (px 75)
+        , spacing 20
+        , onClick <| Play (AlbumPlaylist song.album) song
+        ]
+        [ text <| String.pad 2 '0' <| String.fromInt song.number
+        , if String.length song.title > 35 then
+            Element.el [ width (px 250), clip ] <| text song.title
+          else
+            Element.el [ width shrink ] <| text song.title
+        , Element.el [ width (fillPortion 1), Border.width 1, Border.dashed, Border.color border_color ] <| text ""
+        , Element.el [ alignRight ] <| text <| format_duration song.duration
+        ]
+
 
 phone_details_page page_height album player =
     let
@@ -278,36 +309,6 @@ phone_details_page page_height album player =
                 Nothing ->
                     Nothing
 
-        row song stat =
-            let
-                ( color, border_color ) =
-                    case stat of
-                        Just True ->
-                            ( Styles.link_blue, Styles.link_blue )
-
-                        Just False ->
-                            ( Styles.text_grey, Styles.light_grey )
-
-                        Nothing ->
-                            ( Styles.text_black, Styles.light_grey )
-            in
-            Element.row
-                [ width fill
-                , Font.size 15
-                , Font.color color
-                , pointer
-                , height (px 75)
-                , spacing 20
-                , onClick <| Play (ArtistPlaylist song.artist) song
-                ]
-                [ text <| String.pad 2 '0' <| String.fromInt song.number
-                , if String.length song.title > 35 then
-                    Element.el [ width (px 250), clip ] <| text song.title
-                  else
-                    Element.el [ width shrink ] <| text song.title
-                , Element.el [ width (fillPortion 1), Border.width 1, Border.dashed, Border.color border_color ] <| text ""
-                , Element.el [ alignRight ] <| text <| format_duration song.duration
-                ]
     in
     Element.column
         [ width fill
@@ -317,7 +318,7 @@ phone_details_page page_height album player =
         , paddingEach { edges | top = 40, left = 15, right = 15 }
         ]
         [ phone_details_header album
-        , Element.column [ alignTop, height shrink, width fill ] <| List.map (\x -> row x (status x)) album.songs
+        , Element.column [ alignTop, height shrink, width fill ] <| List.map (\x -> phone_song_row x (status x)) album.songs
         ]
 
 

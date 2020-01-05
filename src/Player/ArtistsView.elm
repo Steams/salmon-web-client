@@ -6,8 +6,8 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
-import Styles exposing (edges,button,icon)
 import Player.Data exposing (..)
+import Styles exposing (button, edges, icon)
 
 
 artist_table_header =
@@ -248,6 +248,7 @@ artist_list_page pmodel =
         , artist_table artists
         ]
 
+
 phone_artist_row artist =
     Element.row
         [ width fill
@@ -262,12 +263,12 @@ phone_artist_row artist =
         [ Element.column [ spacing 7, width fill ]
             [ el [ Font.bold, Font.size 14, width (fill |> maximum 300), clip ] <| text artist.name
             , Element.row [ Font.size 12, spacing 4, width fill ]
-                [
-                  Element.el [ alignLeft ] <| text <| (++) "albums : " <| String.fromInt <| List.length artist.albums
-                 , Element.el [ alignRight ] <| text <| format_duration artist.duration
+                [ Element.el [ alignLeft ] <| text <| (++) "albums : " <| String.fromInt <| List.length artist.albums
+                , Element.el [ alignRight ] <| text <| format_duration artist.duration
                 ]
             ]
         ]
+
 
 phone_details_header artist =
     let
@@ -295,10 +296,8 @@ phone_details_header artist =
                     { src = "", description = "" }
             , Element.column [ centerY, height (px 200), spaceEvenly ]
                 [ Element.column [ spacing 15 ]
-                    [
-                     Element.row [ Font.color Styles.text_grey ] [ Element.el [ Font.color Styles.link_blue ] <| text artist.name ]
+                    [ Element.row [ Font.color Styles.text_grey ] [ Element.el [ Font.color Styles.link_blue ] <| text artist.name ]
                     ]
-
                 , Element.row [ spacing 10 ] [ icon "music" NoOp, text <| (String.fromInt <| List.length <| List.concat <| List.map .songs artist.albums) ++ " tracks" ]
                 , Element.row [ spacing 10 ] [ icon "duration" NoOp, text <| format_duration artist.duration ]
                 , Element.row [ spacing 10, pointer, onClick play_action ] [ icon "play" NoOp, text "Play All" ]
@@ -306,6 +305,106 @@ phone_details_header artist =
             ]
         ]
 
+
+
+phone_song_row song stat =
+    let
+        ( color, border_color ) =
+            case stat of
+                Just True ->
+                    ( Styles.link_blue, Styles.link_blue )
+
+                Just False ->
+                    ( Styles.text_grey, Styles.light_grey )
+
+                Nothing ->
+                    ( Styles.text_black, Styles.light_grey )
+    in
+    Element.row
+        [ width fill
+        , Font.size 15
+        , Font.color color
+        , pointer
+        , height (px 75)
+        , spacing 20
+        , onClick <| Play (ArtistPlaylist song.artist) song
+        ]
+        [ text <| String.pad 2 '0' <| String.fromInt song.number
+        , if String.length song.title > 35 then
+            Element.el [ width (px 250), clip ] <| text song.title
+          else
+            Element.el [ width shrink ] <| text song.title
+        , Element.el [ width (fillPortion 1), Border.width 1, Border.dashed, Border.color border_color ] <| text ""
+        , Element.el [ alignRight ] <| text <| format_duration song.duration
+        ]
+
+phone_album_songs_list album player =
+    let
+        status song =
+            case player of
+                Just { current_playlist, seek_pos, playing } ->
+                    if song.index == current_playlist.active then
+                        Just playing
+
+                    else
+                        Nothing
+
+                Nothing ->
+                    Nothing
+    in
+    Element.column [ width (fill |> maximum 1200) ]
+        [ Element.column [ alignTop, height (shrink |> minimum 300), width fill ] <| List.map (\x -> phone_song_row x (status x)) album.songs
+        ]
+
+
+phone_album_info album =
+    Element.row
+        [ width fill
+        , Font.size 15
+        , height (px 60)
+        , spacing 10
+        ]
+        [ Element.column [ spacing 7, width fill ]
+            [ el [ Font.bold, Font.size 20, width (fill |> maximum 300), clip ] <| text album.name
+            , Element.row [ Font.size 12, spacing 4, width fill ]
+                [ text <| format_duration album.duration
+                , text "-"
+                , text <| (String.fromInt <| List.length album.songs) ++ " tracks"
+                ]
+            ]
+        , Element.image
+            [ centerY
+            , width (px 60)
+            , height (px 60)
+            ]
+            { src = album.art, description = "" }
+        ]
+
+
+phone_album_row player album =
+    Element.column
+        [ width fill
+        , Font.size 15
+        , Font.color Styles.text_black
+        , pointer
+        , Border.color Styles.light_grey
+        , spacing 10
+        ]
+        [ phone_album_info album
+        , phone_album_songs_list album player
+        ]
+
+
+phone_albums_list albums player =
+    Element.column [ width fill, spacing 30, width (fill |> maximum 1400), centerX ] <|
+        Element.el
+            [ alignLeft
+            , Font.color Styles.text_grey
+            , Font.size 15
+            , Font.family [ Font.typeface "Roboto" ]
+            ]
+            (text "ALBUMS")
+            :: List.map (phone_album_row player) albums
 
 
 phone_details_page page_height artist player =
@@ -318,13 +417,16 @@ phone_details_page page_height artist player =
         , width fill
         , height (px available_height)
         , scrollbarY
+        , spacing 40
         ]
         [ phone_details_header artist
+        , phone_albums_list artist.albums player
         ]
 
 
 phone_artists_list artists =
     Element.column [ width fill, spacing 10 ] <| List.map phone_artist_row artists
+
 
 phone_view pmodel =
     let
