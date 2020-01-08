@@ -7,6 +7,7 @@ import Url.Parser as Parser exposing ((</>), Parser, int, oneOf, s, string, top)
 
 type Route
     = Root
+    | Landing
     | Player
     | Login
     | Signup
@@ -16,7 +17,8 @@ type Route
 parser : Parser (Route -> a) a
 parser =
     oneOf
-        [ Parser.map Player top
+        [ Parser.map Landing top
+        , Parser.map Player (s "player")
         , Parser.map Login (s "login")
         , Parser.map Signup (s "signup")
         , Parser.map Verification (s "verification" </> string)
@@ -35,9 +37,11 @@ toUrl route =
             case route of
                 Root ->
                     []
+                Landing ->
+                    []
 
                 Player ->
-                    []
+                    ["player"]
 
                 Login ->
                     [ "login" ]

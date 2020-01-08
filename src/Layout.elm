@@ -11,6 +11,7 @@ type Layout
     | Player
     | Login
     | Signup
+    | Landing
 
 
 type alias TitleAndContent msg =
@@ -48,30 +49,30 @@ view_container layout content =
         ]
 
 
-header : Layout -> Element msg
-header layout =
-    Element.row Styles.nav_bar
-        [ navLink layout Route.Player <| Element.el Styles.nav_item <| Element.text "Player"
-        , navLink layout (Route.Login) <| Element.el Styles.nav_item <| Element.text "Login"
-        ]
+-- header : Layout -> Element msg
+-- header layout =
+--     Element.row Styles.nav_bar
+--         [ navLink layout Route.Player <| Element.el Styles.nav_item <| Element.text "Player"
+--         , navLink layout (Route.Login) <| Element.el Styles.nav_item <| Element.text "Login"
+--         ]
 
 
-navLink layout route label =
-    case isActive layout route of
-        True ->
-            Element.link Styles.active_nav_item { url = Route.toUrl route, label = label }
+-- navLink layout route label =
+--     case isActive layout route of
+--         True ->
+--             Element.link Styles.active_nav_item { url = Route.toUrl route, label = label }
 
-        False ->
-            Element.link Styles.inactive_nav_item { url = Route.toUrl route, label = label }
+--         False ->
+--             Element.link Styles.inactive_nav_item { url = Route.toUrl route, label = label }
 
 
-isActive layout route =
-    case ( layout, route ) of
-        ( Player, Route.Player ) ->
-            True
+-- isActive layout route =
+--     case ( layout, route ) of
+--         ( Player, Route.Player ) ->
+--             True
 
-        ( Login, Route.Login ) ->
-            True
+--         ( Login, Route.Login ) ->
+--             True
 
-        _ ->
-            False
+--         _ ->
+--             False

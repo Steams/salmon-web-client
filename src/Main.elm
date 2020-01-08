@@ -12,6 +12,7 @@ import Pages.Blank as Blank
 import Pages.Login as Login
 import Pages.NotFound as NotFound
 import Pages.Signup as Signup
+import Pages.Landing as Landing
 import Ports as Ports
 import Player as Player
 import RemoteData as RemoteData exposing (RemoteData(..), WebData)
@@ -26,6 +27,7 @@ type Page
     | Player Player.Model
     | Login Login.Model
     | Signup Signup.Model
+    | Landing Landing.Model
     | NotFound
 
 
@@ -44,7 +46,7 @@ init _ url navKey =
         route =
             -- if model.session.sessionToken == "" then
             --     Just Route.Login
-            --     -- Just Route.Home
+            --     -- Just Route.Landing
             --     -- Route.fromUrl url
             -- else
             Route.fromUrl url
@@ -58,6 +60,7 @@ type Msg
     | PlayerMsg Player.Msg
     | LoginMsg Login.Msg
     | SignupMsg Signup.Msg
+    | LandingMsg Landing.Msg
     | VerificationResponse (WebData String)
     | CsrfResponse Route (WebData String)
     | NoOp
@@ -100,6 +103,15 @@ goto maybeRoute model =
             in
             ( { model | page = Signup signup }
             , Cmd.map SignupMsg signup_msg
+            )
+
+        Just Route.Landing ->
+            let
+                ( landing, landing_msg ) =
+                    Landing.init model.session
+            in
+            ( { model | page = Landing landing }
+            , Cmd.map LandingMsg landing_msg
             )
 
         Just (Route.Verification token) ->
@@ -208,6 +220,15 @@ update msg model =
             , Cmd.map SignupMsg signup_msg
             )
 
+        ( LandingMsg subMsg, Landing landing ) ->
+            let
+                ( landing_model, landing_msg ) =
+                    Landing.update model.session subMsg landing
+            in
+            ( { model | page = Landing landing_model }
+            , Cmd.map LandingMsg landing_msg
+            )
+
         ( PlayerMsg subMsg, Player player ) ->
             let
                 ( player_model, player_msg ) =
@@ -247,6 +268,9 @@ view model =
 
         Signup signup ->
             render Layout.Signup SignupMsg (Signup.view signup)
+
+        Landing landing ->
+            render Layout.Landing LandingMsg (Landing.view landing)
 
 
 

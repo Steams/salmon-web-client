@@ -102,8 +102,8 @@ phone_songs_row song status =
             , height (px 40)
             ]
             { src = song.art, description = "" }
-        , Element.column [ spacing 7, width fill]
-            [ el [ Font.bold, Font.size 14, width (fill |> maximum 300), clip] <| text song.title
+        , Element.column [ spacing 7, width fill ]
+            [ el [ Font.bold, Font.size 14, width (fill |> maximum 300), clip ] <| text song.title
             , Element.row [ Font.size 12, spacing 4, width fill ]
                 [ text <| song.artist
                 , text "-"

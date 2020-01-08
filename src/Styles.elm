@@ -37,7 +37,7 @@ icon name handler =
         , width (px 25)
         , height (px 25)
         ]
-        { src = "http://localhost:9000/" ++ name ++ ".png", description = "" }
+        { src = "http://localhost:8080/web_assets/" ++ name ++ ".png", description = "" }
 
 
 
