@@ -29,6 +29,7 @@ import Player.Data exposing(..)
 import Player.AlbumsView as AlbumsView
 import Player.ArtistsView as ArtistsView
 import Player.SongsView as SongsView
+import Player.EmptyView as EmptyView
 
 
 
@@ -500,7 +501,15 @@ render model =
             text "Loading Media Library..."
 
         Success [] ->
-            Element.row [] [ text "Get started by setting up salmon media server on your library machine" ]
+            Element.column
+                [ height fill
+                , width fill
+                , paddingXY 0 0
+                , Background.color Styles.white
+                ]
+                [ topbar (PageModel model.window model.player []) model.mode 
+                , EmptyView.view ()
+                ]
 
         Success songs ->
             let

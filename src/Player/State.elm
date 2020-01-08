@@ -34,9 +34,7 @@ import Tuple
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { data = Loading
-
-      -- , mode = Songs
-      , mode = Albums
+      , mode = Songs
       , window = Size 0 0
       , player = Nothing
       }
@@ -241,7 +239,7 @@ update msg model =
                                         song =
                                             Maybe.withDefault empty_song <| getAt active library
                                     in
-                                        -- NOTE If user clicks back during the first 10% of a song, go to previous, otherwise just restart song
+                                    -- NOTE If user clicks back during the first 10% of a song, go to previous, otherwise just restart song
                                     if p.seek_pos < 0.1 then
                                         ( Just <| Player (Playlist prev active next) 0 True, Ports.initialize (E.string song.playlist) )
 
