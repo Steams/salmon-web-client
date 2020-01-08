@@ -13,6 +13,7 @@ import Pages.Login as Login
 import Pages.NotFound as NotFound
 import Pages.Signup as Signup
 import Pages.Landing as Landing
+import Pages.Instructions as Instructions
 import Ports as Ports
 import Player as Player
 import RemoteData as RemoteData exposing (RemoteData(..), WebData)
@@ -28,6 +29,7 @@ type Page
     | Login Login.Model
     | Signup Signup.Model
     | Landing Landing.Model
+    | Instructions Instructions.Model
     | NotFound
 
 
@@ -61,6 +63,7 @@ type Msg
     | LoginMsg Login.Msg
     | SignupMsg Signup.Msg
     | LandingMsg Landing.Msg
+    | InstructionsMsg Instructions.Msg
     | VerificationResponse (WebData String)
     | CsrfResponse Route (WebData String)
     | NoOp
@@ -73,7 +76,7 @@ goto maybeRoute model =
             ( { model | page = NotFound }, Cmd.none )
 
         Just Route.Root ->
-            ( model, Route.replaceUrl model.session.navKey Route.Player )
+            ( model, Route.replaceUrl model.session.navKey Route.Landing )
 
         Just Route.Player ->
             case model.session.csrfToken of
@@ -86,6 +89,24 @@ goto maybeRoute model =
                             Player.init model.session
                     in
                     ( { model | page = Player player }, Cmd.map PlayerMsg player_msg )
+
+        Just Route.Landing ->
+            let
+                ( landing, landing_msg ) =
+                    Landing.init model.session
+            in
+            ( { model | page = Landing landing }
+            , Cmd.map LandingMsg landing_msg
+            )
+
+        Just Route.Instructions ->
+            let
+                ( instructions, instructions_msg ) =
+                    Instructions.init model.session
+            in
+            ( { model | page = Instructions instructions }
+            , Cmd.map InstructionsMsg instructions_msg
+            )
 
         Just Route.Login ->
             let
@@ -105,14 +126,6 @@ goto maybeRoute model =
             , Cmd.map SignupMsg signup_msg
             )
 
-        Just Route.Landing ->
-            let
-                ( landing, landing_msg ) =
-                    Landing.init model.session
-            in
-            ( { model | page = Landing landing }
-            , Cmd.map LandingMsg landing_msg
-            )
 
         Just (Route.Verification token) ->
             let
@@ -229,6 +242,15 @@ update msg model =
             , Cmd.map LandingMsg landing_msg
             )
 
+        ( InstructionsMsg subMsg, Instructions instructions ) ->
+            let
+                ( instructions_model, instructions_msg ) =
+                    Instructions.update model.session subMsg instructions
+            in
+            ( { model | page = Instructions instructions_model }
+            , Cmd.map InstructionsMsg instructions_msg
+            )
+
         ( PlayerMsg subMsg, Player player ) ->
             let
                 ( player_model, player_msg ) =
@@ -271,6 +293,9 @@ view model =
 
         Landing landing ->
             render Layout.Landing LandingMsg (Landing.view landing)
+
+        Instructions instructions ->
+            render Layout.Instructions InstructionsMsg (Instructions.view instructions)
 
 
 

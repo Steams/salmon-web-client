@@ -28,6 +28,8 @@ type alias Model =
 
 type Msg
     = NoOp
+    | Instructions
+    | Login
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -38,6 +40,16 @@ init session =
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
     case msg of
+        Instructions ->
+            ( model
+            , Nav.pushUrl session.navKey (Route.toUrl Route.Instructions)
+            )
+
+        Login ->
+            ( model
+            , Nav.pushUrl session.navKey (Route.toUrl Route.Login)
+            )
+
         _ ->
             ( model
             , Cmd.none
@@ -62,9 +74,9 @@ showcase =
 
 
 blurb =
-    Element.column [ width (fillPortion 1 |> maximum 900), spacing 50 , paddingXY 100 0]
+    Element.column [ width (fillPortion 1 |> maximum 900), spacing 50, paddingXY 100 0 ]
         [ column [ spacing 15 ]
-            [ el [ Font.color (rgb255 234 69 16), Font.bold , Font.size 18] <| text "TAKE YOUR MUSIC ANYWHERE"
+            [ el [ Font.color (rgb255 234 69 16), Font.bold, Font.size 18 ] <| text "TAKE YOUR MUSIC ANYWHERE"
             , el [ Font.size 40, Font.bold ] <| text "Stream with Salmon"
             ]
         , paragraph []
@@ -82,7 +94,7 @@ blurb =
                 , Font.bold
                 , Background.color (rgb255 198 63 96)
                 ]
-                { onPress = Nothing
+                { onPress = Just Instructions
                 , label = text "Get Started"
                 }
             , Input.button
@@ -111,7 +123,7 @@ content =
 topbar =
     Element.row [ height (px 70), width fill ]
         [ Element.row [ centerX, paddingXY 100 0, width fill ]
-            [ el [ alignLeft , Font.bold] <| text "Salmon"
+            [ el [ alignLeft, Font.bold, pointer ] <| text "Salmon"
             , Element.row [ alignRight, spacing 20 ]
                 [ Input.button
                     [ height (px 50)
@@ -122,7 +134,7 @@ topbar =
                     , Font.bold
                     , Background.color (rgb255 198 63 96)
                     ]
-                    { onPress = Nothing
+                    { onPress = Just Login
                     , label = text "Login"
                     }
                 , Input.button

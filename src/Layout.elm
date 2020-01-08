@@ -12,6 +12,7 @@ type Layout
     | Login
     | Signup
     | Landing
+    | Instructions
 
 
 type alias TitleAndContent msg =
