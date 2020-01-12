@@ -119,7 +119,7 @@ update msg model =
                     Maybe.map (\x -> Player x 0 True) playlist
             in
             ( { model | player = model_player }
-              -- TODO change song.playlist to song.url
+              -- TODO change song.playlist to song.url to avoid confusion
             , Ports.initialize (E.string song.playlist)
             )
 

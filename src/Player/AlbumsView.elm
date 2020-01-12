@@ -7,7 +7,6 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
 import Player.Data exposing (..)
-import Player.SongsView exposing (phone_songs_list)
 import RemoteData exposing (RemoteData(..), WebData)
 import Styles exposing (button, edges, icon)
 
@@ -194,6 +193,18 @@ album_details_page page_height album player =
     let
         available_height =
             page_height - (70 + 100)
+
+        status song =
+            case player of
+                Just { current_playlist, seek_pos, playing } ->
+                    if song.index == current_playlist.active then
+                        Just playing
+
+                    else
+                        Nothing
+
+                Nothing ->
+                    Nothing
     in
     Element.column
         [ paddingEach { edges | top = 40, left = 50, right = 50 }
@@ -203,9 +214,9 @@ album_details_page page_height album player =
         , scrollbarY
         ]
         [ album_details_header album
-        , album_songs_table_header
-        , album_songs_table album.songs player
+        , Element.column [ alignTop, height shrink, width fill ] <| List.map (\x -> phone_song_row x (status x)) album.songs
         ]
+
 
 
 desktop_view pmodel =

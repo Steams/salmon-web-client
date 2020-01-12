@@ -309,6 +309,15 @@ subscriptions model =
             Sub.batch
                 [ Sub.map PlayerMsg (Player.subscriptions player)
                 ]
+        Login login ->
+            Sub.batch
+                [ Sub.map LoginMsg (Login.subscriptions login)
+                ]
+
+        Signup signup ->
+            Sub.batch
+                [ Sub.map SignupMsg (Signup.subscriptions signup)
+                ]
 
         _ ->
             Sub.none

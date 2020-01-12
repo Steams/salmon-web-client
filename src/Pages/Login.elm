@@ -1,6 +1,8 @@
-module Pages.Login exposing (Model, Msg(..), init, update, view)
+module Pages.Login exposing (Model, Msg(..), init, subscriptions, update, view)
 
 import Api exposing (login)
+import Browser.Dom as Dom
+import Browser.Events as BrowserEvents
 import Browser.Navigation as Nav
 import Element exposing (..)
 import Element.Background as Background
@@ -16,6 +18,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Route
 import Session exposing (Session)
 import Styles
+import Task
 
 
 
@@ -25,7 +28,12 @@ import Styles
 type alias Model =
     { username : String
     , password : String
+    , viewport : { width : Int, height : Int }
     }
+
+
+get_screen_info =
+    Task.perform WindowInfo Dom.getViewport
 
 
 type Msg
@@ -35,10 +43,18 @@ type Msg
     | SubmitLogin
     | LoginResponse (WebData String)
     | Signup
+    | Resize Int Int
+    | WindowInfo Dom.Viewport
+
 
 init : Session -> ( Model, Cmd Msg )
 init session =
-    ( { username = "", password = "" }, Cmd.none )
+    ( { username = ""
+      , password = ""
+      , viewport = { width = 0, height = 0 }
+      }
+    , get_screen_info
+    )
 
 
 login username password =
@@ -48,6 +64,24 @@ login username password =
 update : Session -> Msg -> Model -> ( Model, Cmd Msg )
 update session msg model =
     case msg of
+        WindowInfo info ->
+            let
+                _ =
+                    Debug.log "init window" info
+            in
+            ( { model | viewport = { width = round info.viewport.width, height = round info.viewport.height } }
+            , Cmd.none
+            )
+
+        Resize w h ->
+            let
+                _ =
+                    Debug.log "init window" w
+            in
+            ( { model | viewport = { width = w, height = h } }
+            , Cmd.none
+            )
+
         UsernameInput val ->
             ( { model | username = val }
             , Cmd.none
@@ -128,7 +162,7 @@ title value =
         text value
 
 
-signup_panel =
+signup_panel device =
     Element.el
         [ width (fillPortion 2)
         , height fill
@@ -136,18 +170,18 @@ signup_panel =
         , Font.color Styles.white
         ]
     <|
-        Element.column [ centerY, centerX, spacing 40 ]
-            [ Styles.title "First Time? Create an account!" [ Font.color Styles.white ]
-            , paragraph [ width (px 400) ]
+        Element.column [ centerY, centerX, spacing 40, paddingXY 0 30 ]
+            [ el [ Font.size 25, Font.bold, Font.color Styles.white ] <| text "First Time? Create an account!"
+            , paragraph [ width (px 400), centerX ]
                 [ text "Join Salmon now to stream all ur media anywhere you have a pblah a w rest of sentence theere pargarpah the quick borwn fox"
                 ]
             , button "SIGN UP" Signup
             ]
 
 
-login_panel username password =
-    Element.column [ width (fillPortion 3), spacing 60, centerY ]
-        [ title "Log in to Salmon"
+login_panel username password device =
+    Element.column [ width (fillPortion 3), spacing 60, centerY, paddingXY 0 30 ]
+        [ el [ Font.size 25, centerX, Font.bold, Font.color Styles.green ] <| text "Log in to Salmon"
         , Element.column [ centerX, spacing 20 ]
             [ input "Username" UsernameInput username
             , input "Password" PasswordInput password
@@ -158,10 +192,25 @@ login_panel username password =
 
 
 render model =
-    Element.row [ width fill, height fill ]
-        [ login_panel model.username model.password
-        , signup_panel
-        ]
+    let
+        device =
+            Element.classifyDevice model.viewport
+
+        page =
+            case device.class of
+                Phone ->
+                    Element.column [ width fill, height fill ]
+                        [ login_panel model.username model.password Phone
+                        , signup_panel Phone
+                        ]
+
+                _ ->
+                    Element.row [ width fill, height fill ]
+                        [ login_panel model.username model.password Desktop
+                        , signup_panel Desktop
+                        ]
+    in
+    page
 
 
 view : Model -> TitleAndContent Msg
@@ -169,3 +218,9 @@ view model =
     { title = "Login"
     , content = render model
     }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ BrowserEvents.onResize (\w h -> Resize w h) ]
