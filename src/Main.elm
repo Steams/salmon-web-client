@@ -9,13 +9,13 @@ import Json.Decode as Decode exposing (Value)
 import Json.Encode as Encode
 import Layout as Layout
 import Pages.Blank as Blank
+import Pages.Instructions as Instructions
+import Pages.Landing as Landing
 import Pages.Login as Login
 import Pages.NotFound as NotFound
 import Pages.Signup as Signup
-import Pages.Landing as Landing
-import Pages.Instructions as Instructions
-import Ports as Ports
 import Player as Player
+import Ports as Ports
 import RemoteData as RemoteData exposing (RemoteData(..), WebData)
 import Route exposing (Route)
 import Session exposing (Session)
@@ -125,7 +125,6 @@ goto maybeRoute model =
             ( { model | page = Signup signup }
             , Cmd.map SignupMsg signup_msg
             )
-
 
         Just (Route.Verification token) ->
             let
@@ -309,6 +308,7 @@ subscriptions model =
             Sub.batch
                 [ Sub.map PlayerMsg (Player.subscriptions player)
                 ]
+
         Login login ->
             Sub.batch
                 [ Sub.map LoginMsg (Login.subscriptions login)
