@@ -1,5 +1,6 @@
 # salmon-web-client
 Web client media player for Salmon streaming platform
+See also : [github.com/Steams/salmon-hub](https://github.com/Steams/salmon-hub), [github.com/Steams/salmon-media-server](https://github.com/Steams/salmon-media-server)
 
 
 Screenshots:
