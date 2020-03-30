@@ -97,7 +97,7 @@ blurb =
                 { onPress = Just Instructions
                 , label = text "Get Started"
                 }
-            , Input.button
+            , link
                 [ height (px 50)
                 , width (px 150)
                 , Font.size 17
@@ -106,8 +106,14 @@ blurb =
                 , Font.bold
                 , Background.color (rgb255 79 59 121)
                 ]
-                { onPress = Nothing
-                , label = text "Github"
+                { url = "http://github.com/steams/salmon"
+                , label =
+                    el
+                        [ centerY
+                        , centerX
+                        ]
+                    <|
+                        text "Github"
                 }
             ]
         ]
@@ -137,7 +143,7 @@ topbar =
                     { onPress = Just Login
                     , label = text "Login"
                     }
-                , Input.button
+                , link
                     [ height (px 50)
                     , width (px 150)
                     , Font.size 17
@@ -146,8 +152,14 @@ topbar =
                     , Font.bold
                     , Background.color (rgb255 79 59 121)
                     ]
-                    { onPress = Nothing
-                    , label = text "Download"
+                    { url = "http://github.com/steams/salmon"
+                    , label =
+                        el
+                            [ centerY
+                            , centerX
+                            ]
+                        <|
+                            text "Download"
                     }
                 ]
             ]

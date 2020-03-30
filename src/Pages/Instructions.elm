@@ -28,6 +28,7 @@ type alias Model =
 type Msg
     = NoOp
     | Home
+    | Login
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -41,6 +42,11 @@ update session msg model =
         Home ->
             ( model
             , Nav.pushUrl session.navKey (Route.toUrl Route.Landing)
+            )
+
+        Login ->
+            ( model
+            , Nav.pushUrl session.navKey (Route.toUrl Route.Login)
             )
 
         _ ->
@@ -126,10 +132,10 @@ topbar =
                     , Font.bold
                     , Background.color (rgb255 198 63 96)
                     ]
-                    { onPress = Nothing
+                    { onPress = Just Login
                     , label = text "Login"
                     }
-                , Input.button
+                , link
                     [ height (px 50)
                     , width (px 150)
                     , Font.size 17
@@ -138,8 +144,14 @@ topbar =
                     , Font.bold
                     , Background.color (rgb255 79 59 121)
                     ]
-                    { onPress = Nothing
-                    , label = text "Download"
+                    { url = "http://github.com/steams/salmon"
+                    , label =
+                        el
+                            [ centerY
+                            , centerX
+                            ]
+                        <|
+                            text "Download"
                     }
                 ]
             ]

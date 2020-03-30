@@ -3,6 +3,8 @@ module Api exposing (Song, get_data, login, signup, verify,get_csrf)
 import Http as Http
 import Json.Decode as Decode exposing (Decoder, field, int, string)
 import Json.Encode as Encode
+import Json.Decode.Pipeline exposing (required, optional, hardcoded)
+
 import RemoteData as RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 
@@ -45,14 +47,14 @@ type alias Song =
 
 song_decoder : Decoder Song
 song_decoder =
-    Decode.map7 Song
-        (field "Title" string)
-        (field "Artist" string)
-        (field "Album" string)
-        (field "Duration" int)
-        (field "Number" int)
-        (field "Art" string)
-        (field "Playlist" string)
+  Decode.succeed Song
+    |> required "Title" string
+    |> required "Artist" string
+    |> required "Album" string
+    |> required "Duration" int
+    |> required "Number" int
+    |> required "Art" string
+    |> required "Playlist" string
 
 
 song_list_decoder : Decode.Decoder (List Song)
