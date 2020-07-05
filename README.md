@@ -12,3 +12,9 @@ Screenshots:
 ![alt tag](https://i.imgur.com/KPPVxNl.png)
 
 ![alt tag](https://i.imgur.com/LXta3ni.png)
+
+Responsive Mobile view :
+
+![alt tag](https://i.imgur.com/hNjchnc.png)
+
+![alt tag](https://i.imgur.com/4AYh3Oe.png)
